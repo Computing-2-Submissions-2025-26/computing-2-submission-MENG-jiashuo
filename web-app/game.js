@@ -218,6 +218,28 @@ function isOnBoard(row, col) {
 }
 
 /**
+ * Return the opposing player.
+ * @private
+ */
+function otherPlayer(player) {
+    return player === 1 ? 2 : 1;
+}
+
+/**
+ * Produce a new board identical to `board` except that the given position
+ * now holds `piece` (which may be null to clear the square). Structural
+ * sharing: untouched rows are returned as-is.
+ * @private
+ */
+function setPiece(board, position, piece) {
+    return board.map(
+        (row, r) => (r === position.row
+            ? row.map((cell, c) => (c === position.col ? piece : cell))
+            : row)
+    );
+}
+
+/**
  * Decide whether `mover` may step onto the square at (row, col) in a
  * single-square move (used by Fighter and Command, which do not slide).
  * @private
@@ -233,7 +255,6 @@ function canStepOnto(state, mover, row, col) {
     if (target.owner !== mover.owner) {
         return true;
     }
-    // Friendly piece: only legal if boarding an empty tanker.
     return target.type === "tanker"
         && state.carriedPlane === null
         && BOARDABLE_TYPES.includes(mover.type);
@@ -338,6 +359,118 @@ const MOVE_GENERATORS = {
     tanker: tankerMoves,
     command: commandMoves
 };
+
+/* =========================================================================
+ *  STATE TRANSITION HANDLERS — internal
+ * ========================================================================= */
+
+/**
+ * Apply a move into an empty square. Handles the tanker-with-cargo overlay
+ * that triggers the deploy phase.
+ * @private
+ */
+function applyRegularMove(state, from, to, mover) {
+    const newBoard = setPiece(setPiece(state.board, from, null), to, mover);
+    const record = {
+        kind: "move",
+        from: from,
+        to: to,
+        piece: mover,
+        captured: null
+    };
+    const triggersDeploy = mover.type === "tanker"
+        && state.carriedPlane !== null;
+
+    return {
+        ...state,
+        board: newBoard,
+        moveHistory: [...state.moveHistory, record],
+        currentPlayer: triggersDeploy
+            ? state.currentPlayer
+            : otherPlayer(state.currentPlayer),
+        awaitingDeploy: triggersDeploy
+    };
+}
+
+/**
+ * Apply a capture. Handles three special cases:
+ *  - capturing the Command ends the game,
+ *  - capturing a loaded tanker also captures its passenger,
+ *  - a tanker capturing while loaded triggers the deploy phase.
+ * @private
+ */
+function applyCapture(state, from, to, mover, target) {
+    const newBoard = setPiece(setPiece(state.board, from, null), to, mover);
+    const mainRecord = {
+        kind: "capture",
+        from: from,
+        to: to,
+        piece: mover,
+        captured: target
+    };
+
+    const moverIsCarrying = mover.type === "tanker"
+        && state.carriedPlane !== null;
+    const passengerLost = !moverIsCarrying
+        && target.type === "tanker"
+        && state.carriedPlane !== null;
+
+    const extraRecords = passengerLost
+        ? [{
+            kind: "capture",
+            from: to,
+            to: to,
+            piece: mover,
+            captured: state.carriedPlane
+        }]
+        : [];
+
+    const gameEnded = target.type === "command";
+    const newStatus = gameEnded
+        ? (mover.owner === 1 ? "player1Won" : "player2Won")
+        : state.status;
+
+    const triggersDeploy = moverIsCarrying && !gameEnded;
+
+    return {
+        ...state,
+        board: newBoard,
+        moveHistory: [...state.moveHistory, mainRecord, ...extraRecords],
+        currentPlayer: (gameEnded || triggersDeploy)
+            ? state.currentPlayer
+            : otherPlayer(state.currentPlayer),
+        carriedPlane: passengerLost
+            ? null
+            : state.carriedPlane,
+        awaitingDeploy: triggersDeploy,
+        status: newStatus
+    };
+}
+
+/**
+ * Apply a boarding move: a friendly piece moves onto its tanker and
+ * becomes the carried passenger. The tanker stays where it is.
+ * @private
+ */
+function applyBoard(state, from, to, mover) {
+    const newBoard = setPiece(state.board, from, null);
+    const record = {
+        kind: "board",
+        from: from,
+        to: to,
+        piece: mover,
+        captured: null
+    };
+
+    return {
+        ...state,
+        board: newBoard,
+        carriedPlane: mover,
+        moveHistory: [...state.moveHistory, record],
+        currentPlayer: otherPlayer(state.currentPlayer),
+        awaitingDeploy: false
+    };
+}
 
 /* =========================================================================
  *  STATE QUERIES — pure, read-only
@@ -514,8 +647,23 @@ function getWinner(state) {
  * @returns {GameState} A new game state reflecting the move.
  */
 function makeMove(state, from, to) {
-    // TODO: Batch 3
-    return state;
+    const isLegal = getLegalMoves(state, from).some(
+        (pos) => pos.row === to.row && pos.col === to.col
+    );
+    if (!isLegal) {
+        return state;
+    }
+
+    const mover = state.board[from.row][from.col];
+    const target = state.board[to.row][to.col];
+
+    if (target !== null && target.owner === mover.owner) {
+        return applyBoard(state, from, to, mover);
+    }
+    if (target !== null) {
+        return applyCapture(state, from, to, mover, target);
+    }
+    return applyRegularMove(state, from, to, mover);
 }
 
 /**
@@ -530,8 +678,35 @@ function makeMove(state, from, to) {
  *                      passed to the opponent.
  */
 function deployPlane(state, deployTo) {
-    // TODO: Batch 3
-    return state;
+    if (!state.awaitingDeploy) {
+        return state;
+    }
+    const isValid = getDeployTargets(state).some(
+        (pos) => pos.row === deployTo.row && pos.col === deployTo.col
+    );
+    if (!isValid) {
+        return state;
+    }
+
+    const tankerPos = findTanker(state, state.currentPlayer);
+    const passenger = state.carriedPlane;
+    const newBoard = setPiece(state.board, deployTo, passenger);
+    const record = {
+        kind: "deploy",
+        from: tankerPos,
+        to: deployTo,
+        piece: passenger,
+        captured: null
+    };
+
+    return {
+        ...state,
+        board: newBoard,
+        carriedPlane: null,
+        moveHistory: [...state.moveHistory, record],
+        currentPlayer: otherPlayer(state.currentPlayer),
+        awaitingDeploy: false
+    };
 }
 
 /**
@@ -542,8 +717,14 @@ function deployPlane(state, deployTo) {
  * @returns {GameState} A new game state with the turn passed to the opponent.
  */
 function skipDeploy(state) {
-    // TODO: Batch 3
-    return state;
+    if (!state.awaitingDeploy) {
+        return state;
+    }
+    return {
+        ...state,
+        currentPlayer: otherPlayer(state.currentPlayer),
+        awaitingDeploy: false
+    };
 }
 
 /* =========================================================================

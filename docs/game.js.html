@@ -46,7 +46,7 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * @fileoverview Aircraft Chess — API specification.
+ * @fileoverview Aircraft Chess — game module.
  *
  * A turn-based, board-based variant of chess played on an 8×8 grid,
  * where every piece is a military aircraft. Two players take alternating
@@ -132,23 +132,88 @@
  * The complete state of a game in progress.
  *
  * @typedef {Object} GameState
- * @property {Array&lt;Array&lt;Piece|null>>} board - 8×8 grid. board[row][col] is     - 8×8 grid. board[row][col] is
- *                                               the piece on that square, or
- *                                               null if the square is empty.
- * @property {Player}           currentPlayer  - The player whose turn it is.
- * @property {Piece|null}       carriedPlane   - The piece currently carried
- *                                               by the tanker, or null if the
- *                                               tanker is empty.
- * @property {boolean}          awaitingDeploy - True when the tanker has
- *                                               just moved while carrying a
- *                                               passenger and the player must
- *                                               either deploy or skip before
- *                                               the turn ends.
- * @property {Move[]}           moveHistory    - All actions taken so far,
- *                                               in chronological order.
- * @property {GameStatus}       status         - Whether the game is ongoing
- *                                               or has ended.
+ * @property {Array&lt;Array&lt;Piece|null>>} board          - 8×8 grid. board[row][col]
+ *                                                       is the piece on that
+ *                                                       square, or null if the
+ *                                                       square is empty.
+ * @property {Player}                   currentPlayer  - The player whose turn
+ *                                                       it is.
+ * @property {Piece|null}               carriedPlane   - The piece currently
+ *                                                       carried by the tanker,
+ *                                                       or null if the tanker
+ *                                                       is empty.
+ * @property {boolean}                  awaitingDeploy - True when the tanker
+ *                                                       has just moved while
+ *                                                       carrying a passenger
+ *                                                       and the player must
+ *                                                       either deploy or skip
+ *                                                       before the turn ends.
+ * @property {Array&lt;Move>}              moveHistory    - All actions taken so
+ *                                                       far, in chronological
+ *                                                       order.
+ * @property {GameStatus}               status         - Whether the game is
+ *                                                       ongoing or has ended.
  */
+
+/* =========================================================================
+ *  MODULE CONSTANTS
+ * ========================================================================= */
+
+/**
+ * The arrangement of aircraft along a player's back rank at the start of
+ * the game, reading from column 0 to column 7.
+ * @type {Array&lt;PieceType>}
+ */
+const BACK_ROW = [
+    "fighter", "recon", "bomber", "tanker",
+    "command", "bomber", "recon", "fighter"
+];
+
+/**
+ * Maps the final game status to the player who won, or null if the game
+ * has not ended.
+ */
+const STATUS_TO_WINNER = {
+    player1Won: 1,
+    player2Won: 2,
+    playing: null
+};
+
+/**
+ * Offsets for the Fighter's L-shaped jumps.
+ */
+const KNIGHT_OFFSETS = [
+    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+    [1, -2], [1, 2], [2, -1], [2, 1]
+];
+
+/**
+ * Orthogonal unit-vector directions (used by Bomber).
+ */
+const ORTHOGONAL_DIRECTIONS = [
+    [-1, 0], [1, 0], [0, -1], [0, 1]
+];
+
+/**
+ * Diagonal unit-vector directions (used by Recon).
+ */
+const DIAGONAL_DIRECTIONS = [
+    [-1, -1], [-1, 1], [1, -1], [1, 1]
+];
+
+/**
+ * All eight unit-vector directions around a square (used by Tanker and Command).
+ */
+const ALL_DIRECTIONS = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1], [0, 1],
+    [1, -1], [1, 0], [1, 1]
+];
+
+/**
+ * Piece types that may board the tanker. Command and Tanker cannot board.
+ */
+const BOARDABLE_TYPES = ["fighter", "bomber", "recon"];
 
 /* =========================================================================
  *  STATE CREATION
@@ -161,8 +226,165 @@
  * @returns {GameState} A fresh game state ready to play.
  */
 function createInitialGame() {
-    // TODO
+    const emptyRow = () => Array(8).fill(null);
+    const playerRow = (player) => BACK_ROW.map(
+        (type) => ({ type: type, owner: player })
+    );
+
+    const board = [
+        playerRow(1),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        playerRow(2)
+    ];
+
+    return {
+        board: board,
+        currentPlayer: 1,
+        carriedPlane: null,
+        awaitingDeploy: false,
+        moveHistory: [],
+        status: "playing"
+    };
 }
+
+/* =========================================================================
+ *  INTERNAL HELPERS — not exported
+ * ========================================================================= */
+
+/**
+ * Test whether a position lies inside the 8×8 board.
+ * @private
+ */
+function isOnBoard(row, col) {
+    return row >= 0 &amp;&amp; row &lt;= 7 &amp;&amp; col >= 0 &amp;&amp; col &lt;= 7;
+}
+
+/**
+ * Decide whether `mover` may step onto the square at (row, col) in a
+ * single-square move (used by Fighter and Command, which do not slide).
+ * @private
+ */
+function canStepOnto(state, mover, row, col) {
+    if (!isOnBoard(row, col)) {
+        return false;
+    }
+    const target = state.board[row][col];
+    if (target === null) {
+        return true;
+    }
+    if (target.owner !== mover.owner) {
+        return true;
+    }
+    // Friendly piece: only legal if boarding an empty tanker.
+    return target.type === "tanker"
+        &amp;&amp; state.carriedPlane === null
+        &amp;&amp; BOARDABLE_TYPES.includes(mover.type);
+}
+
+/**
+ * Walk along a unit direction (dr, dc) from `from`, collecting every
+ * square the sliding piece may legally stop on. Stops at the first
+ * obstacle that blocks further motion. Recursive — no mutation.
+ * @private
+ */
+function slideInDirection(state, from, mover, dr, dc) {
+    function step(row, col, acc) {
+        if (!isOnBoard(row, col)) {
+            return acc;
+        }
+        const piece = state.board[row][col];
+        if (piece === null) {
+            return step(row + dr, col + dc, acc.concat([{ row: row, col: col }]));
+        }
+        if (piece.owner !== mover.owner) {
+            return acc.concat([{ row: row, col: col }]);
+        }
+        const canBoard = piece.type === "tanker"
+            &amp;&amp; state.carriedPlane === null
+            &amp;&amp; BOARDABLE_TYPES.includes(mover.type);
+        if (canBoard) {
+            return acc.concat([{ row: row, col: col }]);
+        }
+        return acc;
+    }
+    return step(from.row + dr, from.col + dc, []);
+}
+
+/**
+ * Locate the position of `player`'s tanker, or null if it has been captured.
+ * @private
+ */
+function findTanker(state, player) {
+    const matches = state.board.flatMap(
+        (row, r) => row.map(
+            (piece, c) => (
+                piece !== null
+                &amp;&amp; piece.type === "tanker"
+                &amp;&amp; piece.owner === player
+            )
+                ? { row: r, col: c }
+                : null
+        )
+    ).filter((cell) => cell !== null);
+    return matches.length === 0
+        ? null
+        : matches[0];
+}
+
+/* =========================================================================
+ *  PER-PIECE MOVE GENERATORS — internal
+ * ========================================================================= */
+
+/** @private */
+function fighterMoves(state, from, mover) {
+    return KNIGHT_OFFSETS
+        .map(([dr, dc]) => ({ row: from.row + dr, col: from.col + dc }))
+        .filter((pos) => canStepOnto(state, mover, pos.row, pos.col));
+}
+
+/** @private */
+function bomberMoves(state, from, mover) {
+    return ORTHOGONAL_DIRECTIONS.flatMap(
+        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc)
+    );
+}
+
+/** @private */
+function reconMoves(state, from, mover) {
+    return DIAGONAL_DIRECTIONS.flatMap(
+        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc)
+    );
+}
+
+/** @private */
+function tankerMoves(state, from, mover) {
+    return ALL_DIRECTIONS.flatMap(
+        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc).slice(0, 2)
+    );
+}
+
+/** @private */
+function commandMoves(state, from, mover) {
+    return ALL_DIRECTIONS
+        .map(([dr, dc]) => ({ row: from.row + dr, col: from.col + dc }))
+        .filter((pos) => canStepOnto(state, mover, pos.row, pos.col));
+}
+
+/**
+ * Dispatch table from piece type to its move-generator function.
+ */
+const MOVE_GENERATORS = {
+    fighter: fighterMoves,
+    bomber: bomberMoves,
+    recon: reconMoves,
+    tanker: tankerMoves,
+    command: commandMoves
+};
 
 /* =========================================================================
  *  STATE QUERIES — pure, read-only
@@ -175,32 +397,51 @@ function createInitialGame() {
  * @returns {Player}
  */
 function getCurrentPlayer(state) {
-    // TODO
+    return state.currentPlayer;
 }
 
 /**
- * Look up the aircraft on a particular square.
+ * Look up the aircraft on a particular square. Returns null if the position
+ * is off the board, so callers may safely query neighbouring squares.
  *
  * @param   {GameState} state
  * @param   {Position}  position
- * @returns {Piece|null} The piece on that square, or null if it is empty.
+ * @returns {Piece|null} The piece on that square, or null if the square is
+ *                       empty or off the board.
  */
 function getPieceAt(state, position) {
-    // TODO
+    const { row, col } = position;
+    if (!isOnBoard(row, col)) {
+        return null;
+    }
+    return state.board[row][col];
 }
 
 /**
  * Find every square the piece at `fromPosition` is allowed to move to
  * this turn. Returns an empty array if the square is empty, holds an
  * opposing piece, the piece has no legal moves, or the game is in the
- * deploy phase (during deploy phase only the tanker's passenger may act).
+ * deploy phase (callers should use getDeployTargets instead).
  *
  * @param   {GameState} state
  * @param   {Position}  fromPosition
- * @returns {Position[]}
+ * @returns {Array&lt;Position>}
  */
 function getLegalMoves(state, fromPosition) {
-    // TODO
+    if (state.awaitingDeploy) {
+        return [];
+    }
+    if (state.status !== "playing") {
+        return [];
+    }
+    const piece = getPieceAt(state, fromPosition);
+    if (piece === null) {
+        return [];
+    }
+    if (piece.owner !== state.currentPlayer) {
+        return [];
+    }
+    return MOVE_GENERATORS[piece.type](state, fromPosition, piece);
 }
 
 /**
@@ -210,7 +451,7 @@ function getLegalMoves(state, fromPosition) {
  * @returns {Piece|null} The carried piece, or null if the tanker is empty.
  */
 function getCarriedPlane(state) {
-    // TODO
+    return state.carriedPlane;
 }
 
 /**
@@ -222,7 +463,7 @@ function getCarriedPlane(state) {
  * @returns {boolean}
  */
 function canDeploy(state) {
-    // TODO
+    return state.awaitingDeploy;
 }
 
 /**
@@ -231,10 +472,23 @@ function canDeploy(state) {
  * not in the deploy phase.
  *
  * @param   {GameState} state
- * @returns {Position[]}
+ * @returns {Array&lt;Position>}
  */
 function getDeployTargets(state) {
-    // TODO
+    if (!state.awaitingDeploy) {
+        return [];
+    }
+    const tankerPos = findTanker(state, state.currentPlayer);
+    if (tankerPos === null) {
+        return [];
+    }
+    return ALL_DIRECTIONS
+        .map(([dr, dc]) => ({
+            row: tankerPos.row + dr,
+            col: tankerPos.col + dc
+        }))
+        .filter((pos) => isOnBoard(pos.row, pos.col))
+        .filter((pos) => state.board[pos.row][pos.col] === null);
 }
 
 /**
@@ -244,20 +498,23 @@ function getDeployTargets(state) {
  *
  * @param   {GameState} state
  * @param   {Player}    player
- * @returns {Piece[]}
+ * @returns {Array&lt;Piece>}
  */
 function getCapturedPieces(state, player) {
-    // TODO
+    return state.moveHistory
+        .filter((move) => move.captured !== null
+            &amp;&amp; move.captured.owner === player)
+        .map((move) => move.captured);
 }
 
 /**
  * Return the full chronological record of actions taken so far.
  *
  * @param   {GameState} state
- * @returns {Move[]}
+ * @returns {Array&lt;Move>}
  */
 function getMoveHistory(state) {
-    // TODO
+    return state.moveHistory.slice();
 }
 
 /**
@@ -267,7 +524,7 @@ function getMoveHistory(state) {
  * @returns {boolean}
  */
 function isGameOver(state) {
-    // TODO
+    return state.status !== "playing";
 }
 
 /**
@@ -277,7 +534,7 @@ function isGameOver(state) {
  * @returns {Player|null} The winner, or null if the game is still ongoing.
  */
 function getWinner(state) {
-    // TODO
+    return STATUS_TO_WINNER[state.status];
 }
 
 /* =========================================================================
@@ -304,7 +561,8 @@ function getWinner(state) {
  * @returns {GameState} A new game state reflecting the move.
  */
 function makeMove(state, from, to) {
-    // TODO
+    // TODO: Batch 3
+    return state;
 }
 
 /**
@@ -319,7 +577,8 @@ function makeMove(state, from, to) {
  *                      passed to the opponent.
  */
 function deployPlane(state, deployTo) {
-    // TODO
+    // TODO: Batch 3
+    return state;
 }
 
 /**
@@ -330,7 +589,8 @@ function deployPlane(state, deployTo) {
  * @returns {GameState} A new game state with the turn passed to the opponent.
  */
 function skipDeploy(state) {
-    // TODO
+    // TODO: Batch 3
+    return state;
 }
 
 /* =========================================================================
@@ -366,7 +626,7 @@ export {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri May 15 2026 12:13:45 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat May 16 2026 10:44:19 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

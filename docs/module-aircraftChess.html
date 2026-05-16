@@ -58,7 +58,7 @@
         <div class="container-overview">
         
             
-                <div class="description usertext"><p>Aircraft Chess — API specification.</p>
+                <div class="description usertext"><p>Aircraft Chess — game module.</p>
 <p>A turn-based, board-based variant of chess played on an 8×8 grid,
 where every piece is a military aircraft. Two players take alternating
 turns. The game ends when one player captures the opponent's Command
@@ -77,7 +77,7 @@ state transitions return a new GameState.</p></div>
 <dl class="details">
     
     <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>Aircraft Chess — API specification.</p>
+    <dd class="tag-description"><ul class="dummy"><li><p>Aircraft Chess — game module.</p>
 <p>A turn-based, board-based variant of chess played on an 8×8 grid,
 where every piece is a military aircraft. Two players take alternating
 turns. The game ends when one player captures the opponent's Command
@@ -172,6 +172,561 @@ state transitions return a new GameState.</p></li></ul></dd>
     
 
     
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id="~ALL_DIRECTIONS"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>ALL_DIRECTIONS<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>All eight unit-vector directions around a square (used by Tanker and Command).</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line160">line 160</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>All eight unit-vector directions around a square (used by Tanker and Command).</p>
+</div>
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~BACK_ROW"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>BACK_ROW<span class="type-signature"> :Array.&lt;PieceType></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>The arrangement of aircraft along a player's back rank at the start of
+the game, reading from column 0 to column 7.</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line120">line 120</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>The arrangement of aircraft along a player's back rank at the start of
+the game, reading from column 0 to column 7.</p>
+</div>
+
+
+
+    <h5 class="h5-types">Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;PieceType></span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~BOARDABLE_TYPES"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>BOARDABLE_TYPES<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>Piece types that may board the tanker. Command and Tanker cannot board.</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line169">line 169</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>Piece types that may board the tanker. Command and Tanker cannot board.</p>
+</div>
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~DIAGONAL_DIRECTIONS"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>DIAGONAL_DIRECTIONS<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>Diagonal unit-vector directions (used by Recon).</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line153">line 153</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>Diagonal unit-vector directions (used by Recon).</p>
+</div>
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~KNIGHT_OFFSETS"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>KNIGHT_OFFSETS<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>Offsets for the Fighter's L-shaped jumps.</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line138">line 138</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>Offsets for the Fighter's L-shaped jumps.</p>
+</div>
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~MOVE_GENERATORS"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>MOVE_GENERATORS<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>Dispatch table from piece type to its move-generator function.</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line334">line 334</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>Dispatch table from piece type to its move-generator function.</p>
+</div>
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~ORTHOGONAL_DIRECTIONS"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>ORTHOGONAL_DIRECTIONS<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>Orthogonal unit-vector directions (used by Bomber).</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line146">line 146</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>Orthogonal unit-vector directions (used by Bomber).</p>
+</div>
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="~STATUS_TO_WINNER"><span class="type-signature type-signature-inner, constant">(inner, constant) </span>STATUS_TO_WINNER<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>Maps the final game status to the player who won, or null if the game
+has not ended.</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line129">line 129</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description usertext">
+    <p>Maps the final game status to the player who won, or null if the game
+has not ended.</p>
+</div>
+
+
+
+
+
+
+
+
+        
+    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -199,7 +754,7 @@ while carrying a passenger.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line177">line 177</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line418">line 418</a>
     </li></ul></dd>
     
 
@@ -354,7 +909,7 @@ and Player 1 to move first.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line116">line 116</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line181">line 181</a>
     </li></ul></dd>
     
 
@@ -464,7 +1019,7 @@ Ends the current player's turn.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line274">line 274</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line532">line 532</a>
     </li></ul></dd>
     
 
@@ -650,7 +1205,7 @@ panel beside the board.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line202">line 202</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line456">line 456</a>
     </li></ul></dd>
     
 
@@ -828,7 +1383,7 @@ panel beside the board.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line165">line 165</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line406">line 406</a>
     </li></ul></dd>
     
 
@@ -989,7 +1544,7 @@ panel beside the board.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line130">line 130</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line352">line 352</a>
     </li></ul></dd>
     
 
@@ -1145,7 +1700,7 @@ not in the deploy phase.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line189">line 189</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line430">line 430</a>
     </li></ul></dd>
     
 
@@ -1296,13 +1851,13 @@ not in the deploy phase.</p></li></ul></dd>
     <dd class="tag-description"><ul class="dummy"><li><p>Find every square the piece at <code>fromPosition</code> is allowed to move to
 this turn. Returns an empty array if the square is empty, holds an
 opposing piece, the piece has no legal moves, or the game is in the
-deploy phase (during deploy phase only the tanker's passenger may act).</p></li></ul></dd>
+deploy phase (callers should use getDeployTargets instead).</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line155">line 155</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line383">line 383</a>
     </li></ul></dd>
     
 
@@ -1480,7 +2035,7 @@ deploy phase (during deploy phase only the tanker's passenger may act).</p></li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line212">line 212</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line469">line 469</a>
     </li></ul></dd>
     
 
@@ -1628,13 +2183,14 @@ deploy phase (during deploy phase only the tanker's passenger may act).</p></li>
 <dl class="details">
     
     <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>Look up the aircraft on a particular square.</p></li></ul></dd>
+    <dd class="tag-description"><ul class="dummy"><li><p>Look up the aircraft on a particular square. Returns null if the position
+is off the board, so callers may safely query neighbouring squares.</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line141">line 141</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line365">line 365</a>
     </li></ul></dd>
     
 
@@ -1773,7 +2329,8 @@ deploy phase (during deploy phase only the tanker's passenger may act).</p></li>
 
         
 <div class="param-desc">
-    <p>The piece on that square, or null if it is empty.</p>
+    <p>The piece on that square, or null if the square is
+empty or off the board.</p>
 </div>
 
 
@@ -1819,7 +2376,7 @@ deploy phase (during deploy phase only the tanker's passenger may act).</p></li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line232">line 232</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line489">line 489</a>
     </li></ul></dd>
     
 
@@ -1980,7 +2537,7 @@ deploy phase (during deploy phase only the tanker's passenger may act).</p></li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line222">line 222</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line479">line 479</a>
     </li></ul></dd>
     
 
@@ -2145,7 +2702,7 @@ the state is returned unchanged.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line259">line 259</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line516">line 516</a>
     </li></ul></dd>
     
 
@@ -2352,7 +2909,7 @@ the state is returned unchanged.</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="game.js.html">game.js</a>, <a href="game.js.html#line285">line 285</a>
+        <a href="game.js.html">game.js</a>, <a href="game.js.html#line544">line 544</a>
     </li></ul></dd>
     
 
@@ -2592,9 +3149,10 @@ the state is returned unchanged.</p></li></ul></dd>
 
             
 
-            <td class="description last"><p>8×8 grid. board[row][col] is     - 8×8 grid. board[row][col] is
-the piece on that square, or
-null if the square is empty.</p></td>
+            <td class="description last"><p>8×8 grid. board[row][col]
+is the piece on that
+square, or null if the
+square is empty.</p></td>
         </tr>
 
     
@@ -2618,7 +3176,8 @@ null if the square is empty.</p></td>
 
             
 
-            <td class="description last"><p>The player whose turn it is.</p></td>
+            <td class="description last"><p>The player whose turn
+it is.</p></td>
         </tr>
 
     
@@ -2645,9 +3204,10 @@ null if the square is empty.</p></td>
 
             
 
-            <td class="description last"><p>The piece currently carried
-by the tanker, or null if the
-tanker is empty.</p></td>
+            <td class="description last"><p>The piece currently
+carried by the tanker,
+or null if the tanker
+is empty.</p></td>
         </tr>
 
     
@@ -2671,11 +3231,12 @@ tanker is empty.</p></td>
 
             
 
-            <td class="description last"><p>True when the tanker has
-just moved while carrying a
-passenger and the player must
-either deploy or skip before
-the turn ends.</p></td>
+            <td class="description last"><p>True when the tanker
+has just moved while
+carrying a passenger
+and the player must
+either deploy or skip
+before the turn ends.</p></td>
         </tr>
 
     
@@ -2699,8 +3260,9 @@ the turn ends.</p></td>
 
             
 
-            <td class="description last"><p>All actions taken so far,
-in chronological order.</p></td>
+            <td class="description last"><p>All actions taken so
+far, in chronological
+order.</p></td>
         </tr>
 
     
@@ -2724,8 +3286,8 @@ in chronological order.</p></td>
 
             
 
-            <td class="description last"><p>Whether the game is ongoing
-or has ended.</p></td>
+            <td class="description last"><p>Whether the game is
+ongoing or has ended.</p></td>
         </tr>
 
     
@@ -3625,7 +4187,7 @@ Rows and columns are zero-indexed, with (0, 0) at Player 1's left corner.</p>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri May 15 2026 12:13:45 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat May 16 2026 10:44:19 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
