@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>game.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aircraftChess.html">aircraftChess</a><ul class='methods'><li data-type='method'><a href="module-aircraftChess.html#~canDeploy">canDeploy</a></li><li data-type='method'><a href="module-aircraftChess.html#~createInitialGame">createInitialGame</a></li><li data-type='method'><a href="module-aircraftChess.html#~deployPlane">deployPlane</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCapturedPieces">getCapturedPieces</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCarriedPlane">getCarriedPlane</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCurrentPlayer">getCurrentPlayer</a></li><li data-type='method'><a href="module-aircraftChess.html#~getDeployTargets">getDeployTargets</a></li><li data-type='method'><a href="module-aircraftChess.html#~getLegalMoves">getLegalMoves</a></li><li data-type='method'><a href="module-aircraftChess.html#~getMoveHistory">getMoveHistory</a></li><li data-type='method'><a href="module-aircraftChess.html#~getPieceAt">getPieceAt</a></li><li data-type='method'><a href="module-aircraftChess.html#~getWinner">getWinner</a></li><li data-type='method'><a href="module-aircraftChess.html#~isGameOver">isGameOver</a></li><li data-type='method'><a href="module-aircraftChess.html#~makeMove">makeMove</a></li><li data-type='method'><a href="module-aircraftChess.html#~skipDeploy">skipDeploy</a></li></ul></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">game.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @fileoverview Aircraft Chess — API specification.
+ *
+ * A turn-based, board-based variant of chess played on an 8×8 grid,
+ * where every piece is a military aircraft. Two players take alternating
+ * turns. The game ends when one player captures the opponent's Command
+ * aircraft.
+ *
+ * This module exposes the game state and the operations that advance
+ * or query it. All functions are pure: they never mutate their inputs;
+ * state transitions return a new GameState.
+ *
+ * @module aircraftChess
+ */
+
+/* =========================================================================
+ *  TYPE DEFINITIONS
+ * ========================================================================= */
+
+/**
+ * A position on the 8×8 board.
+ * Rows and columns are zero-indexed, with (0, 0) at Player 1's left corner.
+ *
+ * @typedef {Object} Position
+ * @property {number} row - Row index, 0 through 7.
+ * @property {number} col - Column index, 0 through 7.
+ */
+
+/**
+ * The kind of aircraft a piece represents.
+ *
+ *  - "fighter" — moves in an L-shape; the only piece that can jump over others.
+ *  - "bomber"  — moves any distance along ranks and files; cannot jump.
+ *  - "recon"   — moves any distance diagonally; cannot jump.
+ *  - "tanker"  — moves up to two squares in any direction; can carry one
+ *                friendly piece (other than Command) across the board.
+ *  - "command" — moves one square in any direction; capturing the opponent's
+ *                Command wins the game.
+ *
+ * @typedef {("fighter"|"bomber"|"recon"|"tanker"|"command")} PieceType
+ */
+
+/**
+ * Identifier for one of the two players.
+ *
+ * @typedef {(1|2)} Player
+ */
+
+/**
+ * An aircraft on the board.
+ *
+ * @typedef {Object} Piece
+ * @property {PieceType} type  - The kind of aircraft.
+ * @property {Player}    owner - The player who controls this piece.
+ */
+
+/**
+ * A single recorded action taken during the game.
+ *
+ *  - "move"    — a piece moved to an empty square.
+ *  - "capture" — a piece moved onto and captured an opposing piece.
+ *  - "board"   — a friendly piece moved onto the tanker and was loaded aboard.
+ *  - "deploy"  — the tanker dropped its passenger on an adjacent empty square.
+ *
+ * @typedef {Object} Move
+ * @property {("move"|"capture"|"board"|"deploy")} kind     - What kind of
+ *                                                            action this was.
+ * @property {Position}    from     - Source square of the action.
+ * @property {Position}    to       - Target square of the action.
+ * @property {Piece}       piece    - The piece that performed the action.
+ * @property {Piece|null}  captured - The opposing piece removed by this
+ *                                    action, if any.
+ */
+
+/**
+ * The status of the game.
+ *  - "playing"    — the game is in progress.
+ *  - "player1Won" — Player 1 has captured Player 2's Command.
+ *  - "player2Won" — Player 2 has captured Player 1's Command.
+ *
+ * @typedef {("playing"|"player1Won"|"player2Won")} GameStatus
+ */
+
+/**
+ * The complete state of a game in progress.
+ *
+ * @typedef {Object} GameState
+ * @property {Array&lt;Array&lt;Piece|null>>} board - 8×8 grid. board[row][col] is     - 8×8 grid. board[row][col] is
+ *                                               the piece on that square, or
+ *                                               null if the square is empty.
+ * @property {Player}           currentPlayer  - The player whose turn it is.
+ * @property {Piece|null}       carriedPlane   - The piece currently carried
+ *                                               by the tanker, or null if the
+ *                                               tanker is empty.
+ * @property {boolean}          awaitingDeploy - True when the tanker has
+ *                                               just moved while carrying a
+ *                                               passenger and the player must
+ *                                               either deploy or skip before
+ *                                               the turn ends.
+ * @property {Move[]}           moveHistory    - All actions taken so far,
+ *                                               in chronological order.
+ * @property {GameStatus}       status         - Whether the game is ongoing
+ *                                               or has ended.
+ */
+
+/* =========================================================================
+ *  STATE CREATION
+ * ========================================================================= */
+
+/**
+ * Create a new game with all aircraft in their starting positions
+ * and Player 1 to move first.
+ *
+ * @returns {GameState} A fresh game state ready to play.
+ */
+function createInitialGame() {
+    // TODO
+}
+
+/* =========================================================================
+ *  STATE QUERIES — pure, read-only
+ * ========================================================================= */
+
+/**
+ * Identify which player is to move.
+ *
+ * @param   {GameState} state
+ * @returns {Player}
+ */
+function getCurrentPlayer(state) {
+    // TODO
+}
+
+/**
+ * Look up the aircraft on a particular square.
+ *
+ * @param   {GameState} state
+ * @param   {Position}  position
+ * @returns {Piece|null} The piece on that square, or null if it is empty.
+ */
+function getPieceAt(state, position) {
+    // TODO
+}
+
+/**
+ * Find every square the piece at `fromPosition` is allowed to move to
+ * this turn. Returns an empty array if the square is empty, holds an
+ * opposing piece, the piece has no legal moves, or the game is in the
+ * deploy phase (during deploy phase only the tanker's passenger may act).
+ *
+ * @param   {GameState} state
+ * @param   {Position}  fromPosition
+ * @returns {Position[]}
+ */
+function getLegalMoves(state, fromPosition) {
+    // TODO
+}
+
+/**
+ * Identify the aircraft currently aboard the tanker, if any.
+ *
+ * @param   {GameState} state
+ * @returns {Piece|null} The carried piece, or null if the tanker is empty.
+ */
+function getCarriedPlane(state) {
+    // TODO
+}
+
+/**
+ * Check whether the current player must choose to deploy or skip before
+ * their turn can end. This is true immediately after the tanker has moved
+ * while carrying a passenger.
+ *
+ * @param   {GameState} state
+ * @returns {boolean}
+ */
+function canDeploy(state) {
+    // TODO
+}
+
+/**
+ * Find every empty square adjacent to the tanker that the carried piece
+ * may be dropped onto this turn. Returns an empty array if the game is
+ * not in the deploy phase.
+ *
+ * @param   {GameState} state
+ * @returns {Position[]}
+ */
+function getDeployTargets(state) {
+    // TODO
+}
+
+/**
+ * List every piece belonging to `player` that has been captured so far,
+ * in the order they were captured. Useful for displaying a "lost pieces"
+ * panel beside the board.
+ *
+ * @param   {GameState} state
+ * @param   {Player}    player
+ * @returns {Piece[]}
+ */
+function getCapturedPieces(state, player) {
+    // TODO
+}
+
+/**
+ * Return the full chronological record of actions taken so far.
+ *
+ * @param   {GameState} state
+ * @returns {Move[]}
+ */
+function getMoveHistory(state) {
+    // TODO
+}
+
+/**
+ * Check whether the game has finished.
+ *
+ * @param   {GameState} state
+ * @returns {boolean}
+ */
+function isGameOver(state) {
+    // TODO
+}
+
+/**
+ * Identify the winning player.
+ *
+ * @param   {GameState} state
+ * @returns {Player|null} The winner, or null if the game is still ongoing.
+ */
+function getWinner(state) {
+    // TODO
+}
+
+/* =========================================================================
+ *  STATE TRANSITIONS — pure, return a new GameState
+ * ========================================================================= */
+
+/**
+ * Move the piece on `from` to `to`.
+ *
+ * Resolves whichever of the following situations applies:
+ *  - a regular move into an empty square,
+ *  - a capture of an opposing piece,
+ *  - boarding the friendly tanker (the moving piece becomes carried),
+ *  - capturing the tanker (the piece it carries is captured along with it).
+ *
+ * If the tanker itself moves while carrying a passenger, the resulting
+ * state has `awaitingDeploy` set to true and the turn does not yet pass
+ * to the opponent. Otherwise the turn advances. If the move is illegal,
+ * the state is returned unchanged.
+ *
+ * @param   {GameState} state
+ * @param   {Position}  from
+ * @param   {Position}  to
+ * @returns {GameState} A new game state reflecting the move.
+ */
+function makeMove(state, from, to) {
+    // TODO
+}
+
+/**
+ * Drop the piece the tanker is carrying onto an empty square adjacent
+ * to the tanker. Available only while `canDeploy(state)` is true.
+ * Ends the current player's turn.
+ *
+ * @param   {GameState} state
+ * @param   {Position}  deployTo - Empty square adjacent to the tanker.
+ * @returns {GameState} A new game state with the carried piece placed
+ *                      on `deployTo`, the tanker now empty, and the turn
+ *                      passed to the opponent.
+ */
+function deployPlane(state, deployTo) {
+    // TODO
+}
+
+/**
+ * End the current player's turn without deploying. Available only while
+ * `canDeploy(state)` is true. The carried piece remains aboard the tanker.
+ *
+ * @param   {GameState} state
+ * @returns {GameState} A new game state with the turn passed to the opponent.
+ */
+function skipDeploy(state) {
+    // TODO
+}
+
+/* =========================================================================
+ *  EXPORTS
+ * ========================================================================= */
+
+export {
+    createInitialGame,
+    getCurrentPlayer,
+    getPieceAt,
+    getLegalMoves,
+    getCarriedPlane,
+    canDeploy,
+    getDeployTargets,
+    getCapturedPieces,
+    getMoveHistory,
+    isGameOver,
+    getWinner,
+    makeMove,
+    deployPlane,
+    skipDeploy
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri May 15 2026 12:13:45 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+    <link type="text/css" rel="stylesheet" href="custom.css">
+    
+</body>
+</html>
