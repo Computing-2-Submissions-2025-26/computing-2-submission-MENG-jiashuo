@@ -29,10 +29,15 @@
             <section id="status-panel" aria-live="polite">
                 <p>Turn: <strong id="current-player">Player 1</strong></p>
                 <p id="status-message">Click a piece to select</p>
+                <p id="tanker-status" class="tanker-status">Your tanker: empty</p>
             </section>
 
             <section id="deploy-panel" hidden>
-                <p>The tanker is carrying a piece. Click a highlighted square to deploy, or skip.</p>
+                <div class="carrying-info">
+                    <img id="carried-piece-icon" alt="" class="carrying-icon">
+                    <span>Tanker is carrying a <strong id="carried-piece-label"></strong></span>
+                </div>
+                <p>Click a highlighted square to deploy, or skip.</p>
                 <button type="button" id="skip-deploy">Skip Deploy</button>
             </section>
 

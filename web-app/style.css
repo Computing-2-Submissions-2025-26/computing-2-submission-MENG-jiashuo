@@ -280,6 +280,90 @@ header h1 {
     opacity: 0.75;
 }
 
+/* Persistent tanker cargo indicator */
+.tanker-status {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem !important;
+    padding-top: 0.4rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.tanker-status.tanker-loaded {
+    color: var(--accent);
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+/* ===== Deploy panel with prominent carrying display ===== */
+
+#deploy-panel {
+    background-color: var(--bg-secondary);
+    border-left: 4px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.carrying-info {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem;
+    background-color: rgba(255, 165, 0, 0.08);
+    border-radius: 4px;
+}
+
+.carrying-icon {
+    width: 44px;
+    height: 44px;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+}
+
+#carried-piece-label {
+    color: var(--accent);
+    text-transform: capitalize;
+}
+
+#deploy-panel p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* ===== Captured columns ===== */
+
+.captured-column {
+    background-color: var(--bg-secondary);
+    padding: 0.85rem 1rem;
+    border-radius: 4px;
+    min-height: 80px;
+}
+
+.captured-column h2 {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.captured-list {
+    list-style: none;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.captured-list img {
+    width: 44px;
+    height: 44px;
+    image-rendering: pixelated;
+    opacity: 0.75;
+}
+
 /* ===== Buttons ===== */
 
 button {

@@ -1,11 +1,6 @@
 /**
  * @fileoverview Aircraft Chess — Web Application controller.
- *
- * The bridge between the DOM and the pure game module. This file owns
- * two pieces of mutable state — the current game state and the
- * currently selected cell — but contains no game logic: every rule of
- * the game lives in game.js. The pattern is `render(state)`: given a
- * fresh game state, redraw the UI to match it.
+    *author: Jiashuo Meng
  */
 
 import * as Game from "./game.js";
@@ -108,6 +103,7 @@ function handleNewGame() {
 function render(state) {
     renderBoard(state);
     renderStatus(state);
+    renderTankerStatus(state);
     renderDeployPanel(state);
     renderCapturedPieces(state);
     renderGameOver(state);
@@ -115,6 +111,10 @@ function render(state) {
 
 function isSamePos(a, b) {
     return a !== null && b !== null && a.row === b.row && a.col === b.col;
+}
+
+function pieceDescription(piece) {
+    return "Player " + piece.owner + " " + piece.type;
 }
 
 function renderBoard(state) {
@@ -175,10 +175,6 @@ function renderBoard(state) {
     });
 }
 
-function pieceDescription(piece) {
-    return "Player " + piece.owner + " " + piece.type;
-}
-
 function renderStatus(state) {
     document.getElementById("current-player").textContent =
         "Player " + Game.getCurrentPlayer(state);
@@ -193,8 +189,6 @@ function renderStatus(state) {
         msg.textContent = "Deploy phase — choose a target or skip";
         return;
     }
-
-    // If the user has selected a resting Bomber, tell them why no moves show.
     if (selectedCell !== null) {
         const cooldownPos = Game.getCooldownBomber(state, Game.getCurrentPlayer(state));
         if (isSamePos(cooldownPos, selectedCell)) {
@@ -204,16 +198,44 @@ function renderStatus(state) {
         msg.textContent = "Click a highlighted square to move";
         return;
     }
-
     msg.textContent = "Click a piece to select";
+}
+
+/**
+ * Persistent indicator: shows the current player's tanker cargo
+ * (or "empty")
+ */
+function renderTankerStatus(state) {
+    const display = document.getElementById("tanker-status");
+    const player = Game.getCurrentPlayer(state);
+    const carried = Game.getCarriedPlane(state, player);
+
+    if (carried === null) {
+        display.textContent = "Your tanker: empty";
+        display.classList.remove("tanker-loaded");
+    } else {
+        display.textContent = "Your tanker carries: " + carried.type;
+        display.classList.add("tanker-loaded");
+    }
 }
 
 function renderDeployPanel(state) {
     const panel = document.getElementById("deploy-panel");
-    if (Game.canDeploy(state)) {
-        panel.removeAttribute("hidden");
-    } else {
+
+    if (!Game.canDeploy(state)) {
         panel.setAttribute("hidden", "");
+        return;
+    }
+
+    panel.removeAttribute("hidden");
+
+    // Populate the prominent carrying display
+    const carried = Game.getCarriedPlane(state, Game.getCurrentPlayer(state));
+    if (carried !== null) {
+        const icon = document.getElementById("carried-piece-icon");
+        icon.src = "resource/p" + carried.owner + "_" + carried.type + ".png";
+        icon.alt = "";
+        document.getElementById("carried-piece-label").textContent = carried.type;
     }
 }
 
