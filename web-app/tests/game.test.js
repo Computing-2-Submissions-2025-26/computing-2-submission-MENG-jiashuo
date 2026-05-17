@@ -1,18 +1,15 @@
 /**
  * @fileoverview Unit tests for Aircraft Chess — `makeMove`.
  *
- * Tests are organised by category and cover every situation `makeMove`
- * must handle: regular moves, captures, winning the game, boarding,
- * carrying-tanker movement, capturing a loaded tanker, illegal moves,
+ * Tests cover every situation `makeMove` must handle: regular moves,
+ * captures, winning the game, boarding, carrying-tanker movement,
+ * capturing a loaded tanker, illegal moves, the Bomber cooldown rule,
  * and the purity guarantees that pure functional code must uphold.
  */
 
 import { expect } from "chai";
 import * as Game from "../game.js";
 
-/* -----------------------------------------------------------------
- *  TEST CONSTANTS — reused positions to keep tests readable
- * ----------------------------------------------------------------- */
 const P1_FIGHTER_START = { row: 0, col: 0 };
 const FIGHTER_JUMP_TARGET = { row: 2, col: 1 };
 const P1_BOMBER_START = { row: 0, col: 2 };
@@ -62,26 +59,30 @@ describe("makeMove", function () {
 
     /* ================================================================
      *  B. Captures of opposing pieces
+     *  Bomber cooldown rule requires an extra non-bomber turn before
+     *  the capturing Bomber can act again.
      * ================================================================ */
     describe("when capturing an opposing piece", function () {
         let after;
 
         beforeEach(function () {
-            // Two bombers advance toward each other, then P1 captures.
             let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, { row: 1, col: 2 });
-            state = Game.makeMove(state, { row: 7, col: 2 }, { row: 6, col: 2 });
-            after = Game.makeMove(state, { row: 1, col: 2 }, { row: 6, col: 2 });
+            // Each side advances a Bomber; then each side uses a Fighter
+            // to clear the Bomber cooldown; then P1's Bomber captures.
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, { row: 7, col: 2 }, { row: 4, col: 2 });
+            state = Game.makeMove(state, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
+            state = Game.makeMove(state, { row: 7, col: 7 }, { row: 5, col: 6 });
+            after = Game.makeMove(state, { row: 3, col: 2 }, { row: 4, col: 2 });
         });
 
         it("removes the opposing piece from the board", function () {
-            // The opposing bomber is recorded among Player 2's losses.
             expect(Game.getCapturedPieces(after, 2))
                 .to.deep.equal([{ type: "bomber", owner: 2 }]);
         });
 
         it("places the moving piece on the target square", function () {
-            expect(Game.getPieceAt(after, { row: 6, col: 2 }))
+            expect(Game.getPieceAt(after, { row: 4, col: 2 }))
                 .to.deep.equal({ type: "bomber", owner: 1 });
         });
 
@@ -103,7 +104,6 @@ describe("makeMove", function () {
     describe("when the Command is captured", function () {
 
         it("sets the status to \"player1Won\" when Player 1 captures Player 2's Command", function () {
-            // Place a P1 Recon next to P2's Command, then capture it.
             const initial = Game.createInitialGame();
             const customBoard = initial.board.map(
                 (row, r) => row.map(
@@ -117,12 +117,11 @@ describe("makeMove", function () {
             const nearWin = { ...initial, board: customBoard };
             const won = Game.makeMove(nearWin, { row: 6, col: 3 }, { row: 7, col: 4 });
 
-            expect(Game.getWinner(won), "Player 1 should have won the game").to.equal(1);
+            expect(Game.getWinner(won), "Player 1 should have won").to.equal(1);
             expect(Game.isGameOver(won)).to.equal(true);
         });
 
         it("sets the status to \"player2Won\" when Player 2 captures Player 1's Command", function () {
-            // Place a P2 Recon next to P1's Command, then capture it.
             const initial = Game.createInitialGame();
             const customBoard = initial.board.map(
                 (row, r) => row.map(
@@ -136,7 +135,7 @@ describe("makeMove", function () {
             const nearWin = { ...initial, board: customBoard, currentPlayer: 2 };
             const won = Game.makeMove(nearWin, { row: 1, col: 3 }, { row: 0, col: 4 });
 
-            expect(Game.getWinner(won), "Player 2 should have won the game").to.equal(2);
+            expect(Game.getWinner(won), "Player 2 should have won").to.equal(2);
             expect(Game.isGameOver(won)).to.equal(true);
         });
 
@@ -153,9 +152,6 @@ describe("makeMove", function () {
             );
             const nearWin = { ...initial, board: customBoard };
             const won = Game.makeMove(nearWin, { row: 6, col: 3 }, { row: 7, col: 4 });
-
-            // Player 1 made the winning move; they remain the "current" player
-            // (since the game has ended, the turn does not pass).
             expect(Game.getCurrentPlayer(won)).to.equal(1);
         });
     });
@@ -171,9 +167,13 @@ describe("makeMove", function () {
             after = Game.makeMove(initial, P1_BOMBER_START, P1_TANKER_START);
         });
 
-        it("stores the moving piece as the carriedPlane", function () {
-            expect(Game.getCarriedPlane(after))
+        it("stores the moving piece as Player 1's carried plane", function () {
+            expect(Game.getCarriedPlane(after, 1))
                 .to.deep.equal({ type: "bomber", owner: 1 });
+        });
+
+        it("leaves Player 2's tanker cargo unaffected", function () {
+            expect(Game.getCarriedPlane(after, 2)).to.equal(null);
         });
 
         it("leaves the tanker on its original square", function () {
@@ -202,7 +202,6 @@ describe("makeMove", function () {
         let after;
 
         beforeEach(function () {
-            // P1 Bomber boards tanker → P2 makes a move → P1 Tanker (loaded) moves
             let state = Game.createInitialGame();
             state = Game.makeMove(state, P1_BOMBER_START, P1_TANKER_START);
             state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
@@ -210,18 +209,31 @@ describe("makeMove", function () {
         });
 
         it("sets awaitingDeploy to true", function () {
-            expect(Game.canDeploy(after), "deploy phase should activate after a loaded tanker moves")
-                .to.equal(true);
+            expect(Game.canDeploy(after)).to.equal(true);
         });
 
         it("keeps the currentPlayer unchanged", function () {
-            // The tanker belongs to Player 1, and the deploy choice is still theirs.
             expect(Game.getCurrentPlayer(after)).to.equal(1);
         });
 
-        it("preserves the carriedPlane through the move", function () {
-            expect(Game.getCarriedPlane(after))
+        it("preserves Player 1's carried plane through the move", function () {
+            expect(Game.getCarriedPlane(after, 1))
                 .to.deep.equal({ type: "bomber", owner: 1 });
+        });
+    });
+
+    /* ================================================================
+     *  E2. Regression: empty opponent tanker must not trigger deploy
+     * ================================================================ */
+    describe("when an empty tanker moves while the other player is carrying", function () {
+
+        it("does not trigger the deploy phase for the empty tanker's owner", function () {
+            let state = Game.createInitialGame();
+            state = Game.makeMove(state, P1_BOMBER_START, P1_TANKER_START);
+            state = Game.makeMove(state, { row: 7, col: 3 }, { row: 6, col: 3 });
+
+            expect(Game.canDeploy(state)).to.equal(false);
+            expect(Game.getCurrentPlayer(state)).to.equal(1);
         });
     });
 
@@ -232,8 +244,6 @@ describe("makeMove", function () {
         let after;
 
         beforeEach(function () {
-            // Build a state directly: P1 Tanker at (4,4) carrying a P1 Bomber;
-            // P2 Recon at (5,5) ready to capture diagonally.
             const initial = Game.createInitialGame();
             const customBoard = initial.board.map(
                 (row, r) => row.map(
@@ -245,7 +255,7 @@ describe("makeMove", function () {
                             return { type: "recon", owner: 2 };
                         }
                         if (r === 0 && c === 3) {
-                            return null;  // remove the original P1 tanker
+                            return null;
                         }
                         return cell;
                     }
@@ -255,7 +265,7 @@ describe("makeMove", function () {
                 ...initial,
                 board: customBoard,
                 currentPlayer: 2,
-                carriedPlane: { type: "bomber", owner: 1 }
+                carrying: { 1: { type: "bomber", owner: 1 }, 2: null }
             };
             after = Game.makeMove(loadedState, { row: 5, col: 5 }, { row: 4, col: 4 });
         });
@@ -263,12 +273,11 @@ describe("makeMove", function () {
         it("records two capture entries — for the tanker and its passenger", function () {
             const captureEntries = Game.getMoveHistory(after)
                 .filter((move) => move.kind === "capture");
-            expect(captureEntries, "expected two capture entries: tanker + passenger")
-                .to.have.lengthOf(2);
+            expect(captureEntries).to.have.lengthOf(2);
         });
 
-        it("clears carriedPlane to null", function () {
-            expect(Game.getCarriedPlane(after)).to.equal(null);
+        it("clears Player 1's carried plane to null", function () {
+            expect(Game.getCarriedPlane(after, 1)).to.equal(null);
         });
 
         it("reports both captures via getCapturedPieces", function () {
@@ -286,7 +295,6 @@ describe("makeMove", function () {
 
         it("returns the state unchanged for a non-legal target", function () {
             const initial = Game.createInitialGame();
-            // Fighter cannot reach (5, 5) in one L-shaped jump
             const after = Game.makeMove(initial, P1_FIGHTER_START, { row: 5, col: 5 });
             expect(after).to.equal(initial);
         });
@@ -299,27 +307,22 @@ describe("makeMove", function () {
 
         it("returns the state unchanged when moving an opponent's piece", function () {
             const initial = Game.createInitialGame();
-            // Player 1's turn, but trying to move Player 2's Fighter
             const after = Game.makeMove(initial, P2_FIGHTER_START, P2_FIGHTER_TARGET);
             expect(after).to.equal(initial);
         });
 
         it("returns the state unchanged when called during the deploy phase", function () {
-            // Build a state in deploy phase: board the tanker, opponent moves,
-            // then move the loaded tanker.
             let state = Game.createInitialGame();
             state = Game.makeMove(state, P1_BOMBER_START, P1_TANKER_START);
             state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
             state = Game.makeMove(state, P1_TANKER_START, TANKER_DESTINATION);
-            expect(Game.canDeploy(state), "setup precondition: should be in deploy phase")
-                .to.equal(true);
+            expect(Game.canDeploy(state)).to.equal(true);
 
             const after = Game.makeMove(state, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
             expect(after).to.equal(state);
         });
 
         it("returns the state unchanged when called after the game is over", function () {
-            // Construct a near-win state by placing a P1 Recon next to P2 Command.
             const initial = Game.createInitialGame();
             const customBoard = initial.board.map(
                 (row, r) => row.map(
@@ -332,8 +335,6 @@ describe("makeMove", function () {
             );
             const nearWin = { ...initial, board: customBoard };
             const won = Game.makeMove(nearWin, { row: 6, col: 3 }, { row: 7, col: 4 });
-            expect(Game.isGameOver(won), "setup precondition: game should be over")
-                .to.equal(true);
 
             const after = Game.makeMove(won, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
             expect(after).to.equal(won);
@@ -341,7 +342,7 @@ describe("makeMove", function () {
     });
 
     /* ================================================================
-     *  H. Purity — the function must not mutate its inputs
+     *  H. Purity guarantees
      * ================================================================ */
     describe("purity guarantees", function () {
 
@@ -363,22 +364,58 @@ describe("makeMove", function () {
             const before = Game.createInitialGame();
             const historyReference = before.moveHistory;
             Game.makeMove(before, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
-            // The original array reference should still be empty.
             expect(before.moveHistory).to.equal(historyReference);
             expect(before.moveHistory).to.have.lengthOf(0);
         });
     });
-    describe("when the opponent's empty tanker moves while we are carrying", function () {
-        it("does not trigger deploy phase for the opponent", function () {
-            let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, P1_TANKER_START);  // P1 boards
-            const after = Game.makeMove(state, { row: 7, col: 3 }, { row: 6, col: 3 });
-            // ^ P2 moves their empty tanker
 
-            expect(Game.canDeploy(after),
-                "P2's empty tanker should not trigger deploy phase just because P1 is carrying")
-                .to.equal(false);
-            expect(Game.getCurrentPlayer(after)).to.equal(1);  // turn advanced normally
+    /* ================================================================
+     *  I. Bomber cooldown rule
+     *  A Bomber that just moved must rest for one turn before its
+     *  owner may move it again.
+     * ================================================================ */
+    describe("when applying the Bomber cooldown rule", function () {
+
+        it("forbids the same Bomber from moving on the player's next turn", function () {
+            let state = Game.createInitialGame();
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
+
+            const before = state;
+            const after = Game.makeMove(state, { row: 3, col: 2 }, { row: 4, col: 2 });
+            expect(after, "Bomber on cooldown must be unable to move")
+                .to.equal(before);
+        });
+
+        it("returns no legal moves for a Bomber on cooldown", function () {
+            let state = Game.createInitialGame();
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
+
+            expect(Game.getLegalMoves(state, { row: 3, col: 2 })).to.deep.equal([]);
+        });
+
+        it("clears the cooldown after the player moves a different piece", function () {
+            let state = Game.createInitialGame();
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
+            // P1 moves a different piece — this should clear the cooldown
+            state = Game.makeMove(state, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
+            state = Game.makeMove(state, { row: 7, col: 7 }, { row: 5, col: 6 });
+
+            const before = state;
+            const after = Game.makeMove(state, { row: 3, col: 2 }, { row: 4, col: 2 });
+            expect(after, "Bomber should be free to move again after a non-Bomber turn")
+                .to.not.equal(before);
+        });
+
+        it("exposes the resting Bomber's position via getCooldownBomber", function () {
+            let state = Game.createInitialGame();
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+
+            expect(Game.getCooldownBomber(state, 1))
+                .to.deep.equal({ row: 3, col: 2 });
+            expect(Game.getCooldownBomber(state, 2)).to.equal(null);
         });
     });
 
