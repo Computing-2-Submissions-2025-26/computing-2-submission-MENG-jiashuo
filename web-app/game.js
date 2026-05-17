@@ -324,7 +324,7 @@ function fighterMoves(state, from, mover) {
 /** @private */
 function bomberMoves(state, from, mover) {
     return ORTHOGONAL_DIRECTIONS.flatMap(
-        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc)
+        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc).slice(0, 3)
     );
 }
 

@@ -1,9 +1,63 @@
-<!-- In HTML Comments are written like this -->
-<!-- They can all be removed for your apps -->
-<!doctype html> <!-- This first line tells browsers to expect modern standard html 5 -->
-<html lang="en-gb"> <!-- This is indicates the page is written in British English, useful for accessibility -->
-<meta charset="utf-8"> <!-- This indicates how the file is encoded. utf-8 is standard -->
-<title>Your Web-app Title</title> <!-- All pages need a title, this will be displayed in the browser's title bar -->
-<link rel="stylesheet" href="default.css"> <!-- Import style sheet – default.css -->
-<link rel="icon" href="./assets/favicon.png"> <!-- Import 'Favorites Icon' – favicon.png -->
-<script type="module" src="main.js"></script> <!-- Load the main script. Must be type="module". Have only one of these -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aircraft Chess</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <img src="./resource/logo.png" alt="ACC logo" class="logo">
+            <h1 style="color: black;">Air Combat Command</h1>
+        </div>
+
+        <button type="button" id="new-game">New Game</button>
+    </header>
+
+    <main class="game-layout">
+
+        <div id="board" class="board" aria-label="Aircraft Chess board, 8 by 8 grid">
+            <!-- Cells injected by main.js -->
+        </div>
+
+        <aside class="info-panel">
+
+            <section id="status-panel" aria-live="polite">
+                <p>Turn: <strong id="current-player">Player 1</strong></p>
+                <p id="status-message">Click a piece to select</p>
+            </section>
+
+            <section id="deploy-panel" hidden>
+                <p>The tanker is carrying a piece. Click a highlighted square to deploy, or skip.</p>
+                <button type="button" id="skip-deploy">Skip Deploy</button>
+            </section>
+
+            <section class="captured-column" aria-label="Player 1 lost pieces">
+                <h2>Player 1 lost</h2>
+                <ul id="captured-p1" class="captured-list"></ul>
+            </section>
+
+            <section class="captured-column" aria-label="Player 2 lost pieces">
+                <h2>Player 2 lost</h2>
+                <ul id="captured-p2" class="captured-list"></ul>
+            </section>
+
+        </aside>
+
+    </main>
+
+    <div id="game-over-overlay" hidden role="alertdialog" aria-labelledby="winner-message" aria-modal="true">
+        <div class="overlay-content">
+            <h2 id="winner-message"></h2>
+            <button type="button" id="new-game-overlay">Play Again</button>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
