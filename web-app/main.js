@@ -1,5 +1,3 @@
-import * as Game from "./game.js";
-window.Game = Game;
 /**
  * @fileoverview Aircraft Chess — Web Application controller.
  *
@@ -10,16 +8,17 @@ window.Game = Game;
  * fresh game state, redraw the UI to match it.
  */
 
+import * as Game from "./game.js";
 
 /* =========================================================================
- *  MUTABLE UI STATE — not part of the pure game state
+ *  MUTABLE UI STATE
  * ========================================================================= */
 
 let gameState = Game.createInitialGame();
 let selectedCell = null;
 
 /* =========================================================================
- *  INITIALISATION — runs once at load
+ *  INITIALISATION
  * ========================================================================= */
 
 function init() {
@@ -50,7 +49,7 @@ function init() {
 }
 
 /* =========================================================================
- *  EVENT HANDLERS — minimal logic; delegate to the game module
+ *  EVENT HANDLERS
  * ========================================================================= */
 
 function handleCellClick(pos) {
@@ -58,7 +57,6 @@ function handleCellClick(pos) {
         return;
     }
 
-    // Deploy phase: a click either deploys to a valid target or does nothing.
     if (Game.canDeploy(gameState)) {
         gameState = Game.deployPlane(gameState, pos);
         selectedCell = null;
@@ -66,7 +64,6 @@ function handleCellClick(pos) {
         return;
     }
 
-    // No piece selected yet: try to select the clicked piece.
     if (selectedCell === null) {
         const piece = Game.getPieceAt(gameState, pos);
         if (piece !== null && piece.owner === Game.getCurrentPlayer(gameState)) {
@@ -76,13 +73,10 @@ function handleCellClick(pos) {
         return;
     }
 
-    // Have a selection: try to move there.
     const previous = gameState;
     gameState = Game.makeMove(gameState, selectedCell, pos);
 
     if (gameState === previous) {
-        // Move was rejected. If the user clicked another of their own pieces,
-        // reselect; otherwise clear the selection.
         const piece = Game.getPieceAt(gameState, pos);
         if (piece !== null && piece.owner === Game.getCurrentPlayer(gameState)) {
             selectedCell = pos;
@@ -108,7 +102,7 @@ function handleNewGame() {
 }
 
 /* =========================================================================
- *  RENDERING — derive the entire UI from `state`
+ *  RENDERING
  * ========================================================================= */
 
 function render(state) {
@@ -119,6 +113,10 @@ function render(state) {
     renderGameOver(state);
 }
 
+function isSamePos(a, b) {
+    return a !== null && b !== null && a.row === b.row && a.col === b.col;
+}
+
 function renderBoard(state) {
     const legalTargets = (selectedCell !== null && !Game.canDeploy(state))
         ? Game.getLegalMoves(state, selectedCell)
@@ -126,6 +124,8 @@ function renderBoard(state) {
     const deployTargets = Game.canDeploy(state)
         ? Game.getDeployTargets(state)
         : [];
+    const currentPlayer = Game.getCurrentPlayer(state);
+    const cooldownPos = Game.getCooldownBomber(state, currentPlayer);
 
     document.querySelectorAll(".cell").forEach(function (cell) {
         const row = Number(cell.dataset.row);
@@ -136,16 +136,22 @@ function renderBoard(state) {
         cell.innerHTML = "";
         cell.className = "cell " + (isLight ? "cell-light" : "cell-dark");
 
+        const isCooldownHere = isSamePos(cooldownPos, { row: row, col: col });
+
         if (piece !== null) {
             const img = document.createElement("img");
             img.src = "resource/p" + piece.owner + "_" + piece.type + ".png";
-            img.alt = "";  // decorative — the button itself has aria-label
+            img.alt = "";
             cell.appendChild(img);
             cell.classList.add("cell-has-piece");
+
+            const restingNote = isCooldownHere
+                ? " (resting, cannot move this turn)"
+                : "";
             cell.setAttribute(
                 "aria-label",
-                pieceDescription(piece) + " at row " + (row + 1)
-                + " column " + (col + 1)
+                pieceDescription(piece) + restingNote
+                + " at row " + (row + 1) + " column " + (col + 1)
             );
         } else {
             cell.setAttribute(
@@ -154,9 +160,7 @@ function renderBoard(state) {
             );
         }
 
-        if (selectedCell !== null
-            && selectedCell.row === row
-            && selectedCell.col === col) {
+        if (isSamePos(selectedCell, { row: row, col: col })) {
             cell.classList.add("cell-selected");
         }
         if (legalTargets.some((p) => p.row === row && p.col === col)) {
@@ -164,6 +168,9 @@ function renderBoard(state) {
         }
         if (deployTargets.some((p) => p.row === row && p.col === col)) {
             cell.classList.add("cell-deploy-target");
+        }
+        if (isCooldownHere) {
+            cell.classList.add("cell-cooldown");
         }
     });
 }
@@ -177,15 +184,28 @@ function renderStatus(state) {
         "Player " + Game.getCurrentPlayer(state);
 
     const msg = document.getElementById("status-message");
+
     if (Game.isGameOver(state)) {
         msg.textContent = "Game over: Player " + Game.getWinner(state) + " wins!";
-    } else if (Game.canDeploy(state)) {
-        msg.textContent = "Deploy phase — choose a target or skip";
-    } else if (selectedCell === null) {
-        msg.textContent = "Click a piece to select";
-    } else {
-        msg.textContent = "Click a highlighted square to move";
+        return;
     }
+    if (Game.canDeploy(state)) {
+        msg.textContent = "Deploy phase — choose a target or skip";
+        return;
+    }
+
+    // If the user has selected a resting Bomber, tell them why no moves show.
+    if (selectedCell !== null) {
+        const cooldownPos = Game.getCooldownBomber(state, Game.getCurrentPlayer(state));
+        if (isSamePos(cooldownPos, selectedCell)) {
+            msg.textContent = "This bomber is resting — choose another piece";
+            return;
+        }
+        msg.textContent = "Click a highlighted square to move";
+        return;
+    }
+
+    msg.textContent = "Click a piece to select";
 }
 
 function renderDeployPanel(state) {
@@ -223,10 +243,6 @@ function renderGameOver(state) {
     }
 }
 
-/* =========================================================================
- *  Optional: expose the Game module on `window` for console debugging.
- *  Uncomment the next line if you want to call Game.* from DevTools.
- * ========================================================================= */
-// window.Game = Game;
+// window.Game = Game;   // Uncomment for console debugging
 
 init();
