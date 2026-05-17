@@ -29,16 +29,17 @@
             <section id="status-panel" aria-live="polite">
                 <p>Turn: <strong id="current-player">Player 1</strong></p>
                 <p id="status-message">Click a piece to select</p>
-                <p id="tanker-status" class="tanker-status">Your tanker: empty</p>
-            </section>
-
-            <section id="deploy-panel" hidden>
-                <div class="carrying-info">
-                    <img id="carried-piece-icon" alt="" class="carrying-icon">
-                    <span>Tanker is carrying a <strong id="carried-piece-label"></strong></span>
+                <div class="tanker-summary" aria-label="Tanker cargo status">
+                    <p>Player 1 tanker: <span id="tanker-status-p1" class="tanker-cargo">empty</span></p>
+                    <p>Player 2 tanker: <span id="tanker-status-p2" class="tanker-cargo">empty</span></p>
                 </div>
-                <p>Click a highlighted square to deploy, or skip.</p>
-                <button type="button" id="skip-deploy">Skip Deploy</button>
+
+                <div style="margin-top:16px;">
+                    <button type="button" id="skip-deploy">
+                        Skip Tanker Disconnection
+                    </button>
+                </div>
+
             </section>
 
             <section class="captured-column" aria-label="Player 1 lost pieces">

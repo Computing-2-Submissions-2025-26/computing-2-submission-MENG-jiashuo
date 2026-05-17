@@ -1,6 +1,6 @@
 /**
  * @fileoverview Aircraft Chess — Web Application controller.
-    *author: Jiashuo Meng
+ * @author Jiashuo Meng
  */
 
 import * as Game from "./game.js";
@@ -72,16 +72,24 @@ function handleCellClick(pos) {
     gameState = Game.makeMove(gameState, selectedCell, pos);
 
     if (gameState === previous) {
+        // Illegal move — try to reselect a different friendly piece
         const piece = Game.getPieceAt(gameState, pos);
         if (piece !== null && piece.owner === Game.getCurrentPlayer(gameState)) {
             selectedCell = pos;
         } else {
             selectedCell = null;
         }
-    } else {
-        selectedCell = null;
+        render(gameState);
+        return;
     }
+
+    // Move succeeded — render new state, then trigger explosion if it was a capture
+    selectedCell = null;
+    const capturedAt = getCaptureTarget(previous, gameState);
     render(gameState);
+    if (capturedAt !== null) {
+        triggerExplosion(capturedAt);
+    }
 }
 
 function handleSkipDeploy() {
@@ -104,9 +112,9 @@ function render(state) {
     renderBoard(state);
     renderStatus(state);
     renderTankerStatus(state);
-    renderDeployPanel(state);
     renderCapturedPieces(state);
     renderGameOver(state);
+    renderSkipButton(state);
 }
 
 function isSamePos(a, b) {
@@ -202,41 +210,29 @@ function renderStatus(state) {
 }
 
 /**
- * Persistent indicator: shows the current player's tanker cargo
- * (or "empty")
+ * Update the tanker status displays for both players.
  */
 function renderTankerStatus(state) {
-    const display = document.getElementById("tanker-status");
-    const player = Game.getCurrentPlayer(state);
-    const carried = Game.getCarriedPlane(state, player);
-
-    if (carried === null) {
-        display.textContent = "Your tanker: empty";
-        display.classList.remove("tanker-loaded");
-    } else {
-        display.textContent = "Your tanker carries: " + carried.type;
-        display.classList.add("tanker-loaded");
-    }
+    [1, 2].forEach(function (player) {
+        const display = document.getElementById("tanker-status-p" + player);
+        const carried = Game.getCarriedPlane(state, player);
+        if (carried === null) {
+            display.textContent = "empty";
+            display.classList.remove("tanker-loaded");
+        } else {
+            display.textContent = carried.type;
+            display.classList.add("tanker-loaded");
+        }
+    });
 }
 
-function renderDeployPanel(state) {
-    const panel = document.getElementById("deploy-panel");
+function renderSkipButton(state) {
+    const button = document.getElementById("skip-deploy");
 
-    if (!Game.canDeploy(state)) {
-        panel.setAttribute("hidden", "");
-        return;
-    }
+    button.disabled = !Game.canDeploy(state);
 
-    panel.removeAttribute("hidden");
-
-    // Populate the prominent carrying display
-    const carried = Game.getCarriedPlane(state, Game.getCurrentPlayer(state));
-    if (carried !== null) {
-        const icon = document.getElementById("carried-piece-icon");
-        icon.src = "resource/p" + carried.owner + "_" + carried.type + ".png";
-        icon.alt = "";
-        document.getElementById("carried-piece-label").textContent = carried.type;
-    }
+    button.classList.toggle("button-active", Game.canDeploy(state));
+    button.classList.toggle("button-disabled", !Game.canDeploy(state));
 }
 
 function renderCapturedPieces(state) {
@@ -263,6 +259,72 @@ function renderGameOver(state) {
     } else {
         overlay.setAttribute("hidden", "");
     }
+}
+
+/* =========================================================================
+ *  CAPTURE EXPLOSION ANIMATION
+ *
+ *  Pure UI sugar — no game state changes. When a capture happens,
+ *  two short-lived overlay divs (a fireball and a shockwave ring)
+ *  are pinned to the captured square's centre via fixed positioning,
+ *  then removed after their CSS animations finish.
+ * ========================================================================= */
+
+/**
+ * Diff the move histories of the previous and new states. If a capture
+ * was just added, return the square it landed on; otherwise null.
+ * @param   {GameState} previousState
+ * @param   {GameState} newState
+ * @returns {Position|null}
+ */
+function getCaptureTarget(previousState, newState) {
+    const oldHistory = Game.getMoveHistory(previousState);
+    const newHistory = Game.getMoveHistory(newState);
+    if (newHistory.length <= oldHistory.length) {
+        return null;
+    }
+    // Scan only the newly added entries; return the latest capture's target.
+    for (let i = newHistory.length - 1; i >= oldHistory.length; i -= 1) {
+        if (newHistory[i].kind === "capture") {
+            return newHistory[i].to;
+        }
+    }
+    return null;
+}
+
+/**
+ * Spawn a fireball + shockwave at the centre of the given board cell.
+ * Both elements remove themselves once their animations finish.
+ * @param {Position} pos
+ */
+function triggerExplosion(pos) {
+    const cell = document.querySelector(
+        ".cell[data-row=\"" + pos.row + "\"][data-col=\"" + pos.col + "\"]"
+    );
+    if (cell === null) {
+        return;
+    }
+
+    const rect = cell.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const fireball = document.createElement("div");
+    fireball.className = "explosion";
+    fireball.style.left = centerX + "px";
+    fireball.style.top = centerY + "px";
+    document.body.appendChild(fireball);
+
+    const shockwave = document.createElement("div");
+    shockwave.className = "shockwave";
+    shockwave.style.left = centerX + "px";
+    shockwave.style.top = centerY + "px";
+    document.body.appendChild(shockwave);
+
+    setTimeout(function () {
+        fireball.remove();
+        shockwave.remove();
+    }, 800);
 }
 
 // window.Game = Game;   // Uncomment for console debugging

@@ -46,12 +46,11 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    /* logo 和文字之间的间距 */
+
 }
 
 .logo {
     width: 60px;
-    /* 根据需要调整 */
     height: 60px;
     object-fit: contain;
 }
@@ -72,7 +71,7 @@
 }
 
 body {
-    font-family: "gorgia", serif;
+    font-family: "georgia", serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
@@ -207,7 +206,33 @@ header h1 {
     pointer-events: none;
 }
 
-/* ===== Info panel (right column) ===== */
+.cell-cooldown img {
+    filter: grayscale(80%) brightness(0.65);
+    opacity: 0.55;
+}
+
+.cell-cooldown::before {
+    content: "X";
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: #556b2f;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 0;
+    z-index: 3;
+    pointer-events: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== Info panel ===== */
 
 .info-panel {
     display: flex;
@@ -223,7 +248,7 @@ header h1 {
     border-left: 4px solid var(--accent);
 }
 
-#status-panel p {
+#status-panel>p {
     margin: 0.2rem 0;
 }
 
@@ -237,59 +262,28 @@ header h1 {
     font-size: 0.95rem;
 }
 
-#deploy-panel {
-    background-color: var(--bg-secondary);
-    border-left: 4px solid var(--accent);
-    padding: 1rem 1.25rem;
-    border-radius: 4px;
+/* Always-on tanker cargo summary (both players) */
+.tanker-summary {
+    margin-top: 0.6rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.12);
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.15rem;
 }
 
-#deploy-panel p {
-    font-size: 0.9rem;
-}
-
-.captured-column {
-    background-color: var(--bg-secondary);
-    padding: 0.85rem 1rem;
-    border-radius: 4px;
-    min-height: 80px;
-}
-
-.captured-column h2 {
+.tanker-summary p {
+    margin: 0 !important;
     font-size: 0.85rem;
     color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
-.captured-list {
-    list-style: none;
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.captured-list img {
-    width: 44px;
-    height: 44px;
-    image-rendering: pixelated;
-    opacity: 0.75;
-}
-
-/* Persistent tanker cargo indicator */
-.tanker-status {
-    font-size: 0.85rem;
+.tanker-cargo {
     color: var(--text-secondary);
-    margin-top: 0.5rem !important;
-    padding-top: 0.4rem;
-    border-top: 1px dashed rgba(255, 255, 255, 0.1);
 }
 
-.tanker-status.tanker-loaded {
+.tanker-cargo.tanker-loaded {
     color: var(--accent);
     font-weight: bold;
     text-transform: capitalize;
@@ -454,4 +448,104 @@ button:focus {
         height: 36px;
         border-width: 3px;
     }
+}
+
+
+/* ===== tanker_disconnection ===== */
+
+#skip-deploy {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+
+#skip-deploy.button-active {
+    background-color: #054a87;
+    color: white;
+    cursor: pointer;
+}
+
+#skip-deploy.button-disabled {
+    background-color: #b0b0b0;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* =========================================================================
+ *  Capture explosion effects.
+ *  Two overlay elements appended to <body> at the captured cell's
+ *  centre — a yellow/orange fireball and an outward-radiating
+ *  shockwave ring — both fade out within ~700ms.
+ * ========================================================================= */
+
+@keyframes capture-explosion {
+    0% {
+        transform: translate(-50%, -50%) scale(0.2);
+        opacity: 0;
+    }
+
+    15% {
+        transform: translate(-50%, -50%) scale(0.85);
+        opacity: 1;
+    }
+
+    55% {
+        transform: translate(-50%, -50%) scale(1.6);
+        opacity: 0.95;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(2.6);
+        opacity: 0;
+    }
+}
+
+@keyframes capture-shockwave {
+    0% {
+        transform: translate(-50%, -50%) scale(0.3);
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(3.2);
+        opacity: 0;
+    }
+}
+
+.explosion {
+    position: fixed;
+    width: 95px;
+    height: 95px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+            rgba(255, 255, 220, 1) 0%,
+            rgba(255, 220, 100, 0.95) 18%,
+            rgba(255, 160, 50, 0.9) 42%,
+            rgba(255, 80, 20, 0.7) 68%,
+            rgba(200, 30, 0, 0) 100%);
+    animation: capture-explosion 0.7s ease-out forwards;
+    pointer-events: none;
+    z-index: 200;
+    box-shadow: 0 0 50px rgba(255, 150, 50, 0.8),
+        0 0 20px rgba(255, 230, 100, 0.7);
+}
+
+.shockwave {
+    position: fixed;
+    width: 95px;
+    height: 95px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 230, 150, 0.9);
+    box-sizing: border-box;
+    animation: capture-shockwave 0.7s ease-out forwards;
+    pointer-events: none;
+    z-index: 199;
 }
