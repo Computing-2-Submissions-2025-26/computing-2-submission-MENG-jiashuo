@@ -16,6 +16,8 @@ let selectedCell = null;
  *  INITIALISATION
  * ========================================================================= */
 
+
+
 function init() {
     const board = document.getElementById("board");
 
@@ -40,8 +42,23 @@ function init() {
     document.getElementById("new-game-overlay")
         .addEventListener("click", handleNewGame);
 
+    // Rules modal bindings
+    document.getElementById("show-rules")
+        .addEventListener("click", showRulesModal);
+    document.getElementById("close-rules")
+        .addEventListener("click", hideRulesModal);
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            hideRulesModal();
+        }
+    });
+
     render(gameState);
+
+    // Open the rules modal on first load — gives new players a quick tour
+    showRulesModal();
 }
+
 
 /* =========================================================================
  *  EVENT HANDLERS
@@ -104,7 +121,19 @@ function handleNewGame() {
     selectedCell = null;
     render(gameState);
 }
+/* =========================================================================
+ *  RULES MODAL
+ * ========================================================================= */
 
+function showRulesModal() {
+    document.getElementById("rules-modal").removeAttribute("hidden");
+    // Move keyboard focus to the close button so Enter/Space dismisses
+    document.getElementById("close-rules").focus();
+}
+
+function hideRulesModal() {
+    document.getElementById("rules-modal").setAttribute("hidden", "");
+}
 /* =========================================================================
  *  RENDERING
  * ========================================================================= */

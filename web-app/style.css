@@ -64,6 +64,15 @@
     margin: 0;
 }
 
+#show-rules {
+    background: #111;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 #new-game {
     background: #111;
     color: white;
@@ -110,6 +119,145 @@ header h1 {
     align-items: start;
     width: 100%;
     max-width: 1040px;
+}
+
+/* =========================================================================
+ *  Rules modal — shown on first page load, dismissed via "Start Playing"
+ *  or the Esc key. Re-openable via the "Rules" button in the topbar.
+ * ========================================================================= */
+
+#rules-modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+#rules-modal[hidden] {
+    display: none;
+}
+
+.rules-content {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    border-top: 4px solid var(--accent);
+    padding: 2rem;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    color: var(--text-primary);
+}
+
+#rules-title {
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    font-size: 1.8rem;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.rules-section h3 {
+    color: var(--accent);
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+    padding-bottom: 0.3rem;
+}
+
+.rules-section p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-primary);
+}
+
+.rules-section ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.rules-section ul li {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    padding-left: 1rem;
+    position: relative;
+}
+
+.rules-section ul li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+}
+
+.rules-section strong {
+    color: var(--accent);
+}
+
+.piece-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.piece-rule {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background-color: rgba(255, 255, 255, 0.04);
+    padding: 0.6rem 0.75rem;
+    border-radius: 4px;
+}
+
+.piece-rule img {
+    width: 48px;
+    height: 48px;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+}
+
+.piece-rule strong {
+    color: var(--accent);
+    text-transform: capitalize;
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: 1rem;
+}
+
+.piece-rule p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+#close-rules {
+    align-self: center;
+    padding: 0.75rem 2.5rem;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+    background-color: var(--accent);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 /* ===== Board ===== */

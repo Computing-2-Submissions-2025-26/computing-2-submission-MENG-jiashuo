@@ -19,7 +19,11 @@
             <h1 style="color: black;">U.S. Air Combat Command - Ramstien Flag 2026</h1>
         </div>
 
-        <button style="background-color: black;" type="button" id="new-game">New Mission</button>
+        <div class="topbar-actions">
+            <button style="background-color: black;color: white;" type="button" id="show-rules">Rules</button>
+
+            <button style="background-color: black;" type="button" id="new-game">New Game</button>
+        </div>
     </header>
 
     <main class="game-layout">
@@ -64,6 +68,83 @@
         <div class="overlay-content">
             <h2 id="winner-message"></h2>
             <button type="button" id="new-game-overlay">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Game rules modal: shown on initial page load, or via the Rules button -->
+    <div id="rules-modal" role="dialog" aria-labelledby="rules-title" aria-modal="true">
+        <div class="rules-content">
+            <h2 id="rules-title">How to Play</h2>
+
+            <section class="rules-section">
+                <h3>Objective</h3>
+                <p>Capture the opposing <strong>Command</strong> aircraft to win the war.</p>
+            </section>
+
+            <section class="rules-section">
+                <h3>Pieces</h3>
+                <div class="piece-rules">
+                    <div class="piece-rule">
+                        <img src="resource/p1_fighter.png" alt="">
+                        <div>
+                            <strong>Fighter</strong>
+                            <p>L-shape jump (like a chess knight). The only piece that can jump over others.</p>
+                        </div>
+                    </div>
+                    <div class="piece-rule">
+                        <img src="resource/p1_bomber.png" alt="">
+                        <div>
+                            <strong>Bomber</strong>
+                            <p>Slides up to 3 squares orthogonally. Must rest one turn between moves.</p>
+                        </div>
+                    </div>
+                    <div class="piece-rule">
+                        <img src="resource/p1_recon.png" alt="">
+                        <div>
+                            <strong>Recon</strong>
+                            <p>Slides up to 3 squares diagonally.</p>
+                        </div>
+                    </div>
+                    <div class="piece-rule">
+                        <img src="resource/p1_tanker.png" alt="">
+                        <div>
+                            <strong>Tanker</strong>
+                            <p>Moves up to 2 squares in any direction. Can carry one friendly piece (except Command)
+                                across the board.</p>
+                        </div>
+                    </div>
+                    <div class="piece-rule">
+                        <img src="resource/p1_command.png" alt="">
+                        <div>
+                            <strong>Command</strong>
+                            <p>Moves 1 square in any direction. Protect it at all costs — losing it ends the game.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rules-section">
+                <h3>Special Rules</h3>
+                <ul>
+                    <li><strong>Boarding:</strong> Move a Fighter, Bomber, or Recon onto your own Tanker to load it. The
+                        Tanker stays put; the boarded piece becomes cargo.</li>
+                    <li><strong>Deploy Phase:</strong> When your loaded Tanker moves, you must drop the passenger on an
+                        adjacent square — or skip with the "Skip" button.</li>
+                    <li><strong>Bomber Cooldown:</strong> A Bomber that just moved shows an "X" badge and must rest for
+                        one of its owner's turns.</li>
+                </ul>
+            </section>
+
+            <section class="rules-section">
+                <h3>Controls</h3>
+                <ul>
+                    <li>Click your piece to <strong>select</strong> — green dots show legal moves.</li>
+                    <li>Click a highlighted square to <strong>move</strong> there.</li>
+                    <li>Move onto an enemy piece to <strong>capture</strong> it.</li>
+                </ul>
+            </section>
+
+            <button type="button" id="close-rules" class="primary-btn">Copy That</button>
         </div>
     </div>
 
