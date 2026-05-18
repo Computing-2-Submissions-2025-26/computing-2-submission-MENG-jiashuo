@@ -72,7 +72,6 @@ function handleCellClick(pos) {
     gameState = Game.makeMove(gameState, selectedCell, pos);
 
     if (gameState === previous) {
-        // Illegal move — try to reselect a different friendly piece
         const piece = Game.getPieceAt(gameState, pos);
         if (piece !== null && piece.owner === Game.getCurrentPlayer(gameState)) {
             selectedCell = pos;
@@ -83,12 +82,14 @@ function handleCellClick(pos) {
         return;
     }
 
-    // Move succeeded — render new state, then trigger explosion if it was a capture
+    // Move succeeded — render new state, then play capture effects if applicable
     selectedCell = null;
     const capturedAt = getCaptureTarget(previous, gameState);
     render(gameState);
     if (capturedAt !== null) {
         triggerExplosion(capturedAt);
+        playBoomSound();
+        shakeBoard();
     }
 }
 
@@ -209,9 +210,6 @@ function renderStatus(state) {
     msg.textContent = "Click a piece to select";
 }
 
-/**
- * Update the tanker status displays for both players.
- */
 function renderTankerStatus(state) {
     [1, 2].forEach(function (player) {
         const display = document.getElementById("tanker-status-p" + player);
@@ -228,9 +226,7 @@ function renderTankerStatus(state) {
 
 function renderSkipButton(state) {
     const button = document.getElementById("skip-deploy");
-
     button.disabled = !Game.canDeploy(state);
-
     button.classList.toggle("button-active", Game.canDeploy(state));
     button.classList.toggle("button-disabled", !Game.canDeploy(state));
 }
@@ -262,19 +258,12 @@ function renderGameOver(state) {
 }
 
 /* =========================================================================
- *  CAPTURE EXPLOSION ANIMATION
- *
- *  Pure UI sugar — no game state changes. When a capture happens,
- *  two short-lived overlay divs (a fireball and a shockwave ring)
- *  are pinned to the captured square's centre via fixed positioning,
- *  then removed after their CSS animations finish.
+ *  CAPTURE EFFECTS — explosion, sound, screen shake
+ *  All three fire together on capture for maximum impact.
  * ========================================================================= */
 
 /**
- * Diff the move histories of the previous and new states. If a capture
- * was just added, return the square it landed on; otherwise null.
- * @param   {GameState} previousState
- * @param   {GameState} newState
+ * Diff move histories to detect a newly added capture entry.
  * @returns {Position|null}
  */
 function getCaptureTarget(previousState, newState) {
@@ -283,7 +272,6 @@ function getCaptureTarget(previousState, newState) {
     if (newHistory.length <= oldHistory.length) {
         return null;
     }
-    // Scan only the newly added entries; return the latest capture's target.
     for (let i = newHistory.length - 1; i >= oldHistory.length; i -= 1) {
         if (newHistory[i].kind === "capture") {
             return newHistory[i].to;
@@ -294,8 +282,6 @@ function getCaptureTarget(previousState, newState) {
 
 /**
  * Spawn a fireball + shockwave at the centre of the given board cell.
- * Both elements remove themselves once their animations finish.
- * @param {Position} pos
  */
 function triggerExplosion(pos) {
     const cell = document.querySelector(
@@ -325,6 +311,31 @@ function triggerExplosion(pos) {
         fireball.remove();
         shockwave.remove();
     }, 800);
+}
+
+/**
+ * Briefly add a class to the board to trigger the shake keyframe.
+ * Reflow trick: removing-then-adding the class lets the animation
+ * replay cleanly on rapid consecutive captures.
+ */
+function shakeBoard() {
+    const board = document.getElementById("board");
+    board.classList.remove("board-shaking");
+    void board.offsetWidth;  // force reflow
+    board.classList.add("board-shaking");
+
+    setTimeout(function () {
+        board.classList.remove("board-shaking");
+    }, 500);
+}
+
+/**
+ * Play the boom sound effect from the resource folder.
+ */
+function playBoomSound() {
+    const audio = new Audio("resource/sound.mp3");
+    audio.volume = 0.6;
+    audio.play().catch(function () { });
 }
 
 // window.Game = Game;   // Uncomment for console debugging
