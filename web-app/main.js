@@ -127,8 +127,10 @@ function handleNewGame() {
 
 function showRulesModal() {
     document.getElementById("rules-modal").removeAttribute("hidden");
-    // Move keyboard focus to the close button so Enter/Space dismisses
-    document.getElementById("close-rules").focus();
+
+    document.querySelector(".rules-content").scrollTop = 0;
+
+    document.getElementById("close-rules").focus({ preventScroll: true });
 }
 
 function hideRulesModal() {

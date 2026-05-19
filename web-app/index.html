@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aircraft Chess</title>
+    <title>Ramstien Flag 2026</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
@@ -67,18 +67,18 @@
     <div id="game-over-overlay" hidden role="alertdialog" aria-labelledby="winner-message" aria-modal="true">
         <div class="overlay-content">
             <h2 id="winner-message"></h2>
-            <button type="button" id="new-game-overlay">Play Again</button>
+            <button type="button" id="new-game-overlay">New Mission</button>
         </div>
     </div>
 
     <!-- Game rules modal: shown on initial page load, or via the Rules button -->
     <div id="rules-modal" role="dialog" aria-labelledby="rules-title" aria-modal="true">
         <div class="rules-content">
-            <h2 id="rules-title">How to Play</h2>
+            <h2 id="rules-title">Mission Brief</h2>
 
             <section class="rules-section">
                 <h3>Objective</h3>
-                <p>Capture the opposing <strong>Command</strong> aircraft to win the war.</p>
+                <p>Capture the opposing <strong>Command</strong> aircraft to win the mission.</p>
             </section>
 
             <section class="rules-section">
@@ -86,6 +86,7 @@
                 <div class="piece-rules">
                     <div class="piece-rule">
                         <img src="resource/p1_fighter.png" alt="">
+                        <img src="resource/p2_fighter.png" alt="">
                         <div>
                             <strong>Fighter</strong>
                             <p>L-shape jump (like a chess knight). The only piece that can jump over others.</p>
@@ -93,6 +94,7 @@
                     </div>
                     <div class="piece-rule">
                         <img src="resource/p1_bomber.png" alt="">
+                        <img src="resource/p2_bomber.png" alt="">
                         <div>
                             <strong>Bomber</strong>
                             <p>Slides up to 3 squares orthogonally. Must rest one turn between moves.</p>
@@ -100,6 +102,7 @@
                     </div>
                     <div class="piece-rule">
                         <img src="resource/p1_recon.png" alt="">
+                        <img src="resource/p2_recon.png" alt="">
                         <div>
                             <strong>Recon</strong>
                             <p>Slides up to 3 squares diagonally.</p>
@@ -107,6 +110,7 @@
                     </div>
                     <div class="piece-rule">
                         <img src="resource/p1_tanker.png" alt="">
+                        <img src="resource/p2_tanker.png" alt="">
                         <div>
                             <strong>Tanker</strong>
                             <p>Moves up to 2 squares in any direction. Can carry one friendly piece (except Command)
@@ -115,6 +119,7 @@
                     </div>
                     <div class="piece-rule">
                         <img src="resource/p1_command.png" alt="">
+                        <img src="resource/p2_command.png" alt="">
                         <div>
                             <strong>Command</strong>
                             <p>Moves 1 square in any direction. Protect it at all costs — losing it ends the game.</p>
