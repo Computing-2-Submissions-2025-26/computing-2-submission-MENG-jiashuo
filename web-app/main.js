@@ -6,15 +6,31 @@
 import * as Game from "./game.js";
 
 /* =========================================================================
- *  MUTABLE UI STATE
+ *  SCORING CONFIG
+ *  Adjust these values to tune the strategic weight of each piece type.
+ * ========================================================================= */
+
+const PIECE_VALUES = {
+    fighter: 2,
+    recon: 2,
+    bomber: 3,
+    tanker: 4,
+    command: 10
+};
+
+/* =========================================================================
+ *  MUTABLE UI / SESSION STATE
  * ========================================================================= */
 
 let gameState = Game.createInitialGame();
 let selectedCell = null;
 
-// Session-level: the player who lost the most recent game. They start
-// the next one (a small "comeback" advantage). null before the first
-// game has finished — in that case Player 1 starts by default.
+// Session-level scores. Persist across multiple games within the same
+// page load; cleared only when the user refreshes.
+let sessionScores = { 1: 0, 2: 0 };
+
+// Player who lost the most recent finished game. Used as a tiebreaker
+// when both players have the same score.
 let lastLoser = null;
 
 /* =========================================================================
@@ -99,7 +115,9 @@ function handleCellClick(pos) {
         return;
     }
 
-    // Move succeeded — render new state, then play capture effects if applicable
+    // Move succeeded — update scores from any new captures, then render
+    updateScoresFromCaptures(previous, gameState);
+
     selectedCell = null;
     const capturedAt = getCaptureTarget(previous, gameState);
     render(gameState);
@@ -109,7 +127,7 @@ function handleCellClick(pos) {
         shakeBoard();
     }
 
-    // If the game just ended, record the loser so they start the next game
+    // Remember the loser as a tiebreaker for the next game's starter
     if (Game.isGameOver(gameState)) {
         lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
     }
@@ -123,13 +141,56 @@ function handleSkipDeploy() {
 
 function handleNewGame() {
     const initial = Game.createInitialGame();
-    // The loser of the previous game starts the new one. On the very
-    // first game (lastLoser === null) we keep the default — Player 1.
-    gameState = lastLoser === null
-        ? initial
-        : { ...initial, currentPlayer: lastLoser };
+    // The player with the LOWER score starts the next game — a catch-up
+    // mechanic. If tied, fall back to the previous loser, or Player 1.
+    const starter = determineNextStarter();
+    gameState = { ...initial, currentPlayer: starter };
     selectedCell = null;
     render(gameState);
+}
+
+/* =========================================================================
+ *  SCORING LOGIC
+ * ========================================================================= */
+
+/**
+ * Diff the move histories between two states. For every newly added
+ * "capture" entry, credit the moving player the captured piece's
+ * value. Handles double-captures (loaded tanker case) automatically.
+ */
+function updateScoresFromCaptures(previousState, newState) {
+    const oldHistory = Game.getMoveHistory(previousState);
+    const newHistory = Game.getMoveHistory(newState);
+    const newEntries = newHistory.slice(oldHistory.length);
+
+    // The capturer is whoever was on move BEFORE the action — read it
+    // from the previous state, since capturing the Command does not
+    // pass the turn.
+    const capturer = Game.getCurrentPlayer(previousState);
+
+    newEntries
+        .filter((entry) => entry.kind === "capture")
+        .forEach(function (entry) {
+            const value = PIECE_VALUES[entry.captured.type] || 0;
+            sessionScores[capturer] += value;
+        });
+}
+
+/**
+ * Decide which player should make the first move of the next game.
+ * Rules, in order:
+ *   1. Lower score starts (catch-up advantage).
+ *   2. Tied? Use the loser of the previous game.
+ *   3. Still no info (first ever game)? Default to Player 1.
+ */
+function determineNextStarter() {
+    if (sessionScores[1] < sessionScores[2]) {
+        return 1;
+    }
+    if (sessionScores[2] < sessionScores[1]) {
+        return 2;
+    }
+    return lastLoser !== null ? lastLoser : 1;
 }
 
 /* =========================================================================
@@ -154,6 +215,7 @@ function render(state) {
     renderBoard(state);
     renderStatus(state);
     renderTankerStatus(state);
+    renderRanking();
     renderCapturedPieces(state);
     renderGameOver(state);
     renderSkipButton(state);
@@ -265,6 +327,52 @@ function renderTankerStatus(state) {
     });
 }
 
+/**
+ * Render the session ranking board. Sorts players by score (descending)
+ * so the leader appears first; highlights the leading row when there
+ * is a clear winner.
+ */
+function renderRanking() {
+    const board = document.getElementById("ranking-board");
+    if (board === null) {
+        return;
+    }
+    board.innerHTML = "";
+
+    // Sort descending by score; ties keep P1 above P2
+    const ranked = [
+        { id: 1, score: sessionScores[1] },
+        { id: 2, score: sessionScores[2] }
+    ].sort((a, b) => b.score - a.score);
+
+    const tied = ranked[0].score === ranked[1].score;
+
+    ranked.forEach(function (entry, index) {
+        const row = document.createElement("div");
+        row.className = "rank-row";
+        if (!tied && index === 0) {
+            row.classList.add("rank-leader");
+        }
+
+        const position = document.createElement("span");
+        position.className = "rank-position";
+        position.textContent = tied ? "—" : (index === 0 ? "1st" : "2nd");
+
+        const name = document.createElement("span");
+        name.className = "rank-name";
+        name.textContent = "Player " + entry.id;
+
+        const score = document.createElement("span");
+        score.className = "rank-score";
+        score.textContent = entry.score + " pts";
+
+        row.appendChild(position);
+        row.appendChild(name);
+        row.appendChild(score);
+        board.appendChild(row);
+    });
+}
+
 function renderSkipButton(state) {
     const button = document.getElementById("skip-deploy");
     button.disabled = !Game.canDeploy(state);
@@ -301,10 +409,7 @@ function renderGameOver(state) {
 /* =========================================================================
  *  CAPTURE EFFECTS — explosion, sound, screen shake
  * ========================================================================= */
-/**
- * Diff move histories to detect a newly added capture entry.
- * @returns {Position|null}
- */
+
 function getCaptureTarget(previousState, newState) {
     const oldHistory = Game.getMoveHistory(previousState);
     const newHistory = Game.getMoveHistory(newState);
@@ -318,9 +423,7 @@ function getCaptureTarget(previousState, newState) {
     }
     return null;
 }
-/**
- * Spawn a fireball + shockwave at the centre of the given board cell.
- */
+
 function triggerExplosion(pos) {
     const cell = document.querySelector(
         ".cell[data-row=\"" + pos.row + "\"][data-col=\"" + pos.col + "\"]"
@@ -350,11 +453,7 @@ function triggerExplosion(pos) {
         shockwave.remove();
     }, 800);
 }
-/**
- * Briefly add a class to the board to trigger the shake keyframe.
- * Reflow trick: removing-then-adding the class lets the animation
- * replay cleanly on rapid consecutive captures.
- */
+
 function shakeBoard() {
     const board = document.getElementById("board");
     board.classList.remove("board-shaking");
@@ -365,9 +464,7 @@ function shakeBoard() {
         board.classList.remove("board-shaking");
     }, 500);
 }
-/**
- * Play the boom sound effect from the resource folder.
- */
+
 function playBoomSound() {
     const audio = new Audio("resource/sound.mp3");
     audio.volume = 0.6;

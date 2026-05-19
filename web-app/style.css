@@ -765,3 +765,60 @@ button:focus {
 .board-shaking {
     animation: board-shake 0.45s ease-out;
 }
+
+/* ===== Ranking board (session-level scoring) ===== */
+
+.ranking-board {
+    margin-top: 0.6rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.rank-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.55rem;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-left: 3px solid transparent;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.rank-row.rank-leader {
+    background-color: rgba(0, 166, 255, 0.12);
+    border-left-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.rank-position {
+    color: var(--text-secondary);
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.rank-leader .rank-position {
+    color: var(--accent);
+}
+
+.rank-name {
+    letter-spacing: 0.02em;
+}
+
+.rank-score {
+    font-weight: bold;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.rank-leader .rank-score {
+    color: var(--accent);
+}

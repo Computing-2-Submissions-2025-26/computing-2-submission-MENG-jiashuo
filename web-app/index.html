@@ -41,12 +41,16 @@
                     <p>Player 1 tanker: <span id="tanker-status-p1" class="tanker-cargo">empty</span></p>
                     <p>Player 2 tanker: <span id="tanker-status-p2" class="tanker-cargo">empty</span></p>
                 </div>
+                <div id="ranking-board" class="ranking-board" aria-label="Session ranking">
+                    <!-- populated by main.js -->
+                </div>
 
                 <div style="margin-top:16px;">
                     <button type="button" id="skip-deploy">
                         Skip Tanker Disconnection
                     </button>
                 </div>
+
 
             </section>
 
@@ -75,6 +79,10 @@
     <div id="rules-modal" role="dialog" aria-labelledby="rules-title" aria-modal="true">
         <div class="rules-content">
             <h2 id="rules-title">Mission Brief</h2>
+            <p class="welcome-message">
+                Commanders, welcome to <strong>Ramstein Flag 2026</strong>.
+                Your mission objectives are detailed below.
+            </p>
 
             <section class="rules-section">
                 <h3>Objective</h3>
@@ -142,14 +150,24 @@
                         one of its owner's turns.</li>
                 </ul>
             </section>
-
+            <section class="rules-section">
+                <h3>Score</h3>
+                <p>Each captured piece earns you points:</p>
+                <ul>
+                    <li><strong>Fighter / Recon:</strong> 2 pts each</li>
+                    <li><strong>Bomber:</strong> 3 pts</li>
+                    <li><strong>Tanker:</strong> 4 pts</li>
+                    <li><strong>Command:</strong> 10 pts (and you win the round)</li>
+                </ul>
+                <p>Scores persist across games. The player with the lower score starts each
+                    new game.</p>
+            </section>
             <section class="rules-section">
                 <h3>Controls</h3>
                 <ul>
                     <li>Click your aircraft to <strong>select</strong> — green dots show legal moves.</li>
                     <li>Click a highlighted square to <strong>move</strong> there.</li>
                     <li>Move onto an enemy aircraft to <strong>capture</strong> it.</li>
-
                 </ul>
             </section>
 
