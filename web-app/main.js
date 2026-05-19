@@ -12,11 +12,14 @@ import * as Game from "./game.js";
 let gameState = Game.createInitialGame();
 let selectedCell = null;
 
+// Session-level: the player who lost the most recent game. They start
+// the next one (a small "comeback" advantage). null before the first
+// game has finished — in that case Player 1 starts by default.
+let lastLoser = null;
+
 /* =========================================================================
  *  INITIALISATION
  * ========================================================================= */
-
-
 
 function init() {
     const board = document.getElementById("board");
@@ -42,7 +45,6 @@ function init() {
     document.getElementById("new-game-overlay")
         .addEventListener("click", handleNewGame);
 
-    // Rules modal bindings
     document.getElementById("show-rules")
         .addEventListener("click", showRulesModal);
     document.getElementById("close-rules")
@@ -55,10 +57,8 @@ function init() {
 
     render(gameState);
 
-    // Open the rules modal on first load — gives new players a quick tour
     showRulesModal();
 }
-
 
 /* =========================================================================
  *  EVENT HANDLERS
@@ -108,6 +108,11 @@ function handleCellClick(pos) {
         playBoomSound();
         shakeBoard();
     }
+
+    // If the game just ended, record the loser so they start the next game
+    if (Game.isGameOver(gameState)) {
+        lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
+    }
 }
 
 function handleSkipDeploy() {
@@ -117,25 +122,30 @@ function handleSkipDeploy() {
 }
 
 function handleNewGame() {
-    gameState = Game.createInitialGame();
+    const initial = Game.createInitialGame();
+    // The loser of the previous game starts the new one. On the very
+    // first game (lastLoser === null) we keep the default — Player 1.
+    gameState = lastLoser === null
+        ? initial
+        : { ...initial, currentPlayer: lastLoser };
     selectedCell = null;
     render(gameState);
 }
+
 /* =========================================================================
  *  RULES MODAL
  * ========================================================================= */
 
 function showRulesModal() {
     document.getElementById("rules-modal").removeAttribute("hidden");
-
     document.querySelector(".rules-content").scrollTop = 0;
-
     document.getElementById("close-rules").focus({ preventScroll: true });
 }
 
 function hideRulesModal() {
     document.getElementById("rules-modal").setAttribute("hidden", "");
 }
+
 /* =========================================================================
  *  RENDERING
  * ========================================================================= */
@@ -290,9 +300,7 @@ function renderGameOver(state) {
 
 /* =========================================================================
  *  CAPTURE EFFECTS — explosion, sound, screen shake
- *  All three fire together on capture for maximum impact.
  * ========================================================================= */
-
 /**
  * Diff move histories to detect a newly added capture entry.
  * @returns {Position|null}
@@ -310,7 +318,6 @@ function getCaptureTarget(previousState, newState) {
     }
     return null;
 }
-
 /**
  * Spawn a fireball + shockwave at the centre of the given board cell.
  */
@@ -343,7 +350,6 @@ function triggerExplosion(pos) {
         shockwave.remove();
     }, 800);
 }
-
 /**
  * Briefly add a class to the board to trigger the shake keyframe.
  * Reflow trick: removing-then-adding the class lets the animation
@@ -352,14 +358,13 @@ function triggerExplosion(pos) {
 function shakeBoard() {
     const board = document.getElementById("board");
     board.classList.remove("board-shaking");
-    void board.offsetWidth;  // force reflow
+    void board.offsetWidth;
     board.classList.add("board-shaking");
 
     setTimeout(function () {
         board.classList.remove("board-shaking");
     }, 500);
 }
-
 /**
  * Play the boom sound effect from the resource folder.
  */
