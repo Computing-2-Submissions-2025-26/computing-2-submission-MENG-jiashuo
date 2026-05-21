@@ -412,6 +412,10 @@ header h1 {
     border-left: 4px solid var(--accent);
 }
 
+#status-panel.player2-turn {
+    border-left-color: #ff5050;
+}
+
 #status-panel>p {
     margin: 0.2rem 0;
 }
@@ -419,6 +423,10 @@ header h1 {
 #current-player {
     color: var(--accent);
     font-size: 1.25rem;
+}
+
+#current-player.player2-turn {
+    color: #ff5050;
 }
 
 #status-message {
@@ -821,4 +829,214 @@ button:focus {
 
 .rank-leader .rank-score {
     color: var(--accent);
+}
+
+/* ===== Player labels above/below the board ===== */
+
+.battlefield {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.player-label {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.55rem 1rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    border: 2px solid transparent;
+}
+
+.player-label-p1 {
+    background: linear-gradient(90deg, #1e3a5f 0%, #2f4a73 100%);
+    color: #b8d4ff;
+    border-color: #4a6fa5;
+}
+
+.player-label-p2 {
+    background: linear-gradient(90deg, #5a2222 0%, #7a3030 100%);
+    color: #ffc8c8;
+    border-color: #a04a4a;
+}
+
+
+
+.label-force {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    letter-spacing: 0.2em;
+}
+
+
+.player-label.is-active {
+    filter: brightness(1.35);
+    transform: scale(1.01);
+}
+
+.player-label-p1.is-active {
+    box-shadow: 0 0 16px rgba(0, 166, 255, 0.6);
+    border-color: #00a6ff;
+}
+
+.player-label-p2.is-active {
+    box-shadow: 0 0 16px rgba(255, 80, 80, 0.6);
+    border-color: #ff5050;
+}
+
+/* ===== Turn timer — LCD digital display ===== */
+
+.timer-display {
+    margin: 0.55rem 0 0.4rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.lcd-panel {
+    background: #080f08;
+    border: 1px solid #1a301a;
+    border-radius: 5px;
+    padding: 0.4rem 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    margin-bottom: 0.45rem;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 0 1px #0a1a0a;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Scanline overlay for CRT/LCD feel */
+.lcd-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0, 0, 0, 0.07) 3px,
+        rgba(0, 0, 0, 0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+.lcd-digits-wrap {
+    position: relative;
+    display: inline-block;
+    line-height: 1;
+}
+
+.lcd-ghost-digits,
+.lcd-digits {
+    font-family: "Courier New", "Lucida Console", monospace;
+    font-size: 2.8rem;
+    font-weight: bold;
+    letter-spacing: 0.18em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    display: block;
+}
+
+/* Dim "ghost" segments — always-lit LCD effect */
+.lcd-ghost-digits {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: rgba(0, 200, 50, 0.1);
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+}
+
+.lcd-digits {
+    position: relative;
+    color: #00e833;
+    text-shadow: 0 0 5px #00e833, 0 0 12px rgba(0, 232, 51, 0.55);
+    z-index: 2;
+}
+
+.lcd-unit {
+    font-family: "Courier New", monospace;
+    font-size: 0.6rem;
+    color: #0e3a0e;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    align-self: flex-end;
+    margin-bottom: 0.45rem;
+    z-index: 2;
+}
+
+/* Progress bar */
+.timer-track {
+    height: 7px;
+    background: #0a180a;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #162816;
+}
+
+.timer-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #009922, #00e833);
+    border-radius: 4px;
+    box-shadow: 0 0 6px rgba(0, 232, 51, 0.35);
+    transition: width 0.92s linear, background 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* ── Warning (≤ 30 s) ── */
+.timer-display.timer-warning .lcd-digits {
+    color: #ffcc00;
+    text-shadow: 0 0 5px #ffcc00, 0 0 12px rgba(255, 204, 0, 0.55);
+}
+.timer-display.timer-warning .lcd-ghost-digits {
+    color: rgba(200, 160, 0, 0.1);
+}
+.timer-display.timer-warning .lcd-unit {
+    color: #4a3500;
+}
+.timer-display.timer-warning .timer-fill {
+    background: linear-gradient(90deg, #bb7700, #ffcc00);
+    box-shadow: 0 0 6px rgba(255, 204, 0, 0.35);
+}
+
+/* ── Danger (≤ 10 s) ── */
+.timer-display.timer-danger .lcd-digits {
+    color: #ff3333;
+    text-shadow: 0 0 5px #ff3333, 0 0 12px rgba(255, 51, 51, 0.7);
+    animation: lcd-blink 0.55s step-end infinite;
+}
+.timer-display.timer-danger .lcd-ghost-digits {
+    color: rgba(200, 0, 0, 0.1);
+}
+.timer-display.timer-danger .lcd-unit {
+    color: #4a0000;
+}
+.timer-display.timer-danger .timer-fill {
+    background: linear-gradient(90deg, #aa0000, #ff3333);
+    box-shadow: 0 0 6px rgba(255, 51, 51, 0.5);
+}
+.timer-display.timer-danger .lcd-panel {
+    animation: lcd-panel-pulse 0.55s ease-in-out infinite;
+}
+
+@keyframes lcd-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.25; }
+}
+
+@keyframes lcd-panel-pulse {
+    0%, 100% { box-shadow: inset 0 2px 8px rgba(0,0,0,.8), 0 0 0 1px #0a1a0a; }
+    50%      { box-shadow: inset 0 2px 8px rgba(0,0,0,.8), 0 0 10px rgba(255,51,51,.55), 0 0 0 1px #880000; }
 }

@@ -33,6 +33,11 @@ let sessionScores = { 1: 0, 2: 0 };
 // when both players have the same score.
 let lastLoser = null;
 
+// Turn timer state
+const TURN_TIME = 90;
+let timerInterval = null;
+let timeLeft = TURN_TIME;
+
 /* =========================================================================
  *  INITIALISATION
  * ========================================================================= */
@@ -86,9 +91,18 @@ function handleCellClick(pos) {
     }
 
     if (Game.canDeploy(gameState)) {
+        const prevDeploy = gameState;
         gameState = Game.deployPlane(gameState, pos);
-        selectedCell = null;
-        render(gameState);
+        if (gameState !== prevDeploy) {
+            selectedCell = null;
+            render(gameState);
+            if (Game.isGameOver(gameState)) {
+                lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        }
         return;
     }
 
@@ -127,9 +141,11 @@ function handleCellClick(pos) {
         shakeBoard();
     }
 
-    // Remember the loser as a tiebreaker for the next game's starter
     if (Game.isGameOver(gameState)) {
         lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
+        stopTimer();
+    } else {
+        startTimer();
     }
 }
 
@@ -137,16 +153,18 @@ function handleSkipDeploy() {
     gameState = Game.skipDeploy(gameState);
     selectedCell = null;
     render(gameState);
+    if (!Game.isGameOver(gameState)) {
+        startTimer();
+    }
 }
 
 function handleNewGame() {
     const initial = Game.createInitialGame();
-    // The player with the LOWER score starts the next game — a catch-up
-    // mechanic. If tied, fall back to the previous loser, or Player 1.
     const starter = determineNextStarter();
     gameState = { ...initial, currentPlayer: starter };
     selectedCell = null;
     render(gameState);
+    startTimer();
 }
 
 /* =========================================================================
@@ -198,6 +216,7 @@ function determineNextStarter() {
  * ========================================================================= */
 
 function showRulesModal() {
+    stopTimer();
     document.getElementById("rules-modal").removeAttribute("hidden");
     document.querySelector(".rules-content").scrollTop = 0;
     document.getElementById("close-rules").focus({ preventScroll: true });
@@ -205,6 +224,141 @@ function showRulesModal() {
 
 function hideRulesModal() {
     document.getElementById("rules-modal").setAttribute("hidden", "");
+    if (!Game.isGameOver(gameState)) {
+        startTimer();
+    }
+}
+
+/* =========================================================================
+ *  TURN TIMER
+ * ========================================================================= */
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = TURN_TIME;
+
+    // Snap bar to full instantly (bypass CSS transition)
+    const fill = document.getElementById("timer-fill");
+    if (fill) {
+        fill.style.transition = "none";
+        fill.style.width = "100%";
+        requestAnimationFrame(function () {
+            fill.style.transition = "";
+        });
+    }
+
+    updateTimerDisplay();
+
+    timerInterval = setInterval(function () {
+        timeLeft = Math.max(0, timeLeft - 1);
+        updateTimerDisplay();
+        if (timeLeft === 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            executeRandomMove();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+}
+
+function updateTimerDisplay() {
+    const digits = document.getElementById("timer-digits");
+    const fill = document.getElementById("timer-fill");
+    const display = document.getElementById("timer-display");
+    const track = document.getElementById("timer-track");
+
+    if (!digits || !fill || !display) {
+        return;
+    }
+
+    digits.textContent = String(timeLeft).padStart(2, "0");
+    fill.style.width = ((timeLeft / TURN_TIME) * 100) + "%";
+
+    if (track) {
+        track.setAttribute("aria-valuenow", String(timeLeft));
+    }
+
+    display.classList.remove("timer-warning", "timer-danger");
+    if (timeLeft <= 10) {
+        display.classList.add("timer-danger");
+    } else if (timeLeft <= 30) {
+        display.classList.add("timer-warning");
+    }
+}
+
+function executeRandomMove() {
+    if (Game.isGameOver(gameState)) {
+        return;
+    }
+
+    // Deploy phase: pick a random target or skip
+    if (Game.canDeploy(gameState)) {
+        const targets = Game.getDeployTargets(gameState);
+        if (targets.length > 0 && Math.random() > 0.3) {
+            const t = targets[Math.floor(Math.random() * targets.length)];
+            gameState = Game.deployPlane(gameState, t);
+        } else {
+            gameState = Game.skipDeploy(gameState);
+        }
+        selectedCell = null;
+        render(gameState);
+        if (!Game.isGameOver(gameState)) {
+            startTimer();
+        }
+        return;
+    }
+
+    // Collect every piece of the current player that has a legal move
+    const currentPlayer = Game.getCurrentPlayer(gameState);
+    const candidates = [];
+
+    for (let r = 0; r < 8; r += 1) {
+        for (let c = 0; c < 8; c += 1) {
+            const piece = Game.getPieceAt(gameState, { row: r, col: c });
+            if (piece !== null && piece.owner === currentPlayer) {
+                const moves = Game.getLegalMoves(
+                    gameState, { row: r, col: c }
+                );
+                if (moves.length > 0) {
+                    candidates.push({ from: { row: r, col: c }, moves });
+                }
+            }
+        }
+    }
+
+    if (candidates.length === 0) {
+        startTimer();
+        return;
+    }
+
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    const move = pick.moves[Math.floor(Math.random() * pick.moves.length)];
+
+    const previous = gameState;
+    gameState = Game.makeMove(gameState, pick.from, move);
+    updateScoresFromCaptures(previous, gameState);
+
+    selectedCell = null;
+    const capturedAt = getCaptureTarget(previous, gameState);
+    render(gameState);
+
+    if (capturedAt !== null) {
+        triggerExplosion(capturedAt);
+        playBoomSound();
+        shakeBoard();
+    }
+
+    if (Game.isGameOver(gameState)) {
+        lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
+        stopTimer();
+        return;
+    }
+
+    startTimer();
 }
 
 /* =========================================================================
@@ -288,8 +442,19 @@ function renderBoard(state) {
 }
 
 function renderStatus(state) {
-    document.getElementById("current-player").textContent =
-        "Player " + Game.getCurrentPlayer(state);
+    const currentPlayer = Game.getCurrentPlayer(state);
+
+
+    document.getElementById("current-player").textContent = "Player " + currentPlayer;
+    document.getElementById("current-player")
+        .classList.toggle("player2-turn", currentPlayer === 2);
+    document.getElementById("status-panel")
+        .classList.toggle("player2-turn", currentPlayer === 2);
+    document.getElementById("label-p1")
+        .classList.toggle("is-active", currentPlayer === 1);
+    document.getElementById("label-p2")
+        .classList.toggle("is-active", currentPlayer === 2);
+
 
     const msg = document.getElementById("status-message");
 
@@ -302,7 +467,7 @@ function renderStatus(state) {
         return;
     }
     if (selectedCell !== null) {
-        const cooldownPos = Game.getCooldownBomber(state, Game.getCurrentPlayer(state));
+        const cooldownPos = Game.getCooldownBomber(state, currentPlayer);
         if (isSamePos(cooldownPos, selectedCell)) {
             msg.textContent = "This bomber is resting — choose another piece";
             return;
