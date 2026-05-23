@@ -30,7 +30,7 @@
         <div class="battlefield">
             <div class="player-label player-label-p1" id="label-p1">
 
-                <span class="label-force">P1:United State Air Force</span>
+                <span class="label-force" id="label-force-p1">P1: United States Air Force</span>
             </div>
 
             <div id="board" class="board" aria-label="Aircraft Chess board, 8 by 8 grid">
@@ -39,7 +39,7 @@
 
             <div class="player-label player-label-p2" id="label-p2">
 
-                <span class="label-force">P2:Intruder Force</span>
+                <span class="label-force" id="label-force-p2">P2: Intruder Force</span>
             </div>
         </div>
 
@@ -65,8 +65,8 @@
                 <p id="status-message">Click a piece to select</p>
 
                 <div class="tanker-summary" aria-label="Tanker cargo status">
-                    <p>Player 1 tanker: <span id="tanker-status-p1" class="tanker-cargo">empty</span></p>
-                    <p>Player 2 tanker: <span id="tanker-status-p2" class="tanker-cargo">empty</span></p>
+                    <p><span id="tname-p1">Player 1</span> tanker: <span id="tanker-status-p1" class="tanker-cargo">empty</span></p>
+                    <p><span id="tname-p2">Player 2</span> tanker: <span id="tanker-status-p2" class="tanker-cargo">empty</span></p>
                 </div>
 
                 <div id="ranking-board" class="ranking-board" aria-label="Session ranking">
@@ -82,12 +82,12 @@
             </section>
 
             <section class="captured-column" aria-label="Player 1 lost pieces">
-                <h2>Player 1 lost</h2>
+                <h2 id="cap-title-p1">Player 1 lost</h2>
                 <ul id="captured-p1" class="captured-list"></ul>
             </section>
 
             <section class="captured-column" aria-label="Player 2 lost pieces">
-                <h2>Player 2 lost</h2>
+                <h2 id="cap-title-p2">Player 2 lost</h2>
                 <ul id="captured-p2" class="captured-list"></ul>
             </section>
 
@@ -102,7 +102,21 @@
         </div>
     </div>
 
-    <div id="rules-modal" role="dialog" aria-labelledby="rules-title" aria-modal="true">
+    <div id="name-entry-modal" role="dialog" aria-labelledby="name-entry-title" aria-modal="true">
+        <div class="name-entry-content">
+            <h2 id="name-entry-title">Commander Identification</h2>
+            <p class="name-entry-subtitle">Enter callsigns before the mission begins</p>
+            <div class="name-entry-fields">
+                <label for="name-p1">Player 1 Callsign</label>
+                <input type="text" id="name-p1" placeholder="Player 1" maxlength="20" autocomplete="off">
+                <label for="name-p2">Player 2 Callsign</label>
+                <input type="text" id="name-p2" placeholder="Player 2" maxlength="20" autocomplete="off">
+            </div>
+            <button type="button" id="confirm-names">Confirm</button>
+        </div>
+    </div>
+
+    <div id="rules-modal" hidden role="dialog" aria-labelledby="rules-title" aria-modal="true">
         <div class="rules-content">
             <h2 id="rules-title">Mission Brief</h2>
 

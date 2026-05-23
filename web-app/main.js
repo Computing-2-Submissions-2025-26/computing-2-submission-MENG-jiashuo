@@ -41,6 +41,9 @@ let timeLeft = TURN_TIME;
 // BGM state
 let bgmEnabled = true;
 
+// Player display names — set once at session start via the name-entry modal
+let playerNames = { 1: "Player 1", 2: "Player 2" };
+
 /* =========================================================================
  *  INITIALISATION
  * ========================================================================= */
@@ -75,6 +78,16 @@ function init() {
         .addEventListener("click", hideRulesModal);
     document.getElementById("toggle-bgm")
         .addEventListener("click", toggleBGM);
+    document.getElementById("confirm-names")
+        .addEventListener("click", handleNameEntry);
+    const inp1 = document.getElementById("name-p1");
+    inp1.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { document.getElementById("name-p2").focus(); }
+    });
+    const inp2 = document.getElementById("name-p2");
+    inp2.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { handleNameEntry(); }
+    });
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape") {
             hideRulesModal();
@@ -84,7 +97,7 @@ function init() {
     initBGM();
     render(gameState);
 
-    showRulesModal();
+    showNameEntryModal();
 }
 
 /* =========================================================================
@@ -235,6 +248,42 @@ function hideRulesModal() {
     if (!Game.isGameOver(gameState)) {
         startTimer();
     }
+}
+
+/* =========================================================================
+ *  NAME ENTRY MODAL
+ * ========================================================================= */
+
+function showNameEntryModal() {
+    stopTimer();
+    document.getElementById("name-entry-modal").removeAttribute("hidden");
+    document.getElementById("name-p1").focus();
+}
+
+function hideNameEntryModal() {
+    document.getElementById("name-entry-modal").setAttribute("hidden", "");
+}
+
+function handleNameEntry() {
+    const n1 = document.getElementById("name-p1").value.trim();
+    const n2 = document.getElementById("name-p2").value.trim();
+    playerNames[1] = n1 || "Player 1";
+    playerNames[2] = n2 || "Player 2";
+    updateStaticNameLabels();
+    render(gameState);
+    hideNameEntryModal();
+    showRulesModal();
+}
+
+function updateStaticNameLabels() {
+    document.getElementById("label-force-p1").textContent = playerNames[1];
+    document.getElementById("label-force-p2").textContent = playerNames[2];
+    document.getElementById("tname-p1").textContent = playerNames[1];
+    document.getElementById("tname-p2").textContent = playerNames[2];
+    document.getElementById("cap-title-p1").textContent =
+        playerNames[1] + " lost";
+    document.getElementById("cap-title-p2").textContent =
+        playerNames[2] + " lost";
 }
 
 /* =========================================================================
@@ -439,7 +488,7 @@ function isSamePos(a, b) {
 }
 
 function pieceDescription(piece) {
-    return "Player " + piece.owner + " " + piece.type;
+    return playerNames[piece.owner] + " " + piece.type;
 }
 
 function renderBoard(state) {
@@ -505,7 +554,7 @@ function renderStatus(state) {
 
 
     document.getElementById("current-player").textContent =
-        "Player " + currentPlayer;
+        playerNames[currentPlayer];
     document.getElementById("current-player")
         .classList.toggle("player2-turn", currentPlayer === 2);
     document.getElementById("status-panel")
@@ -520,7 +569,7 @@ function renderStatus(state) {
 
     if (Game.isGameOver(state)) {
         msg.textContent =
-            "Game over: Player " + Game.getWinner(state) + " wins!";
+            "Game over: " + playerNames[Game.getWinner(state)] + " wins!";
         return;
     }
     if (Game.canDeploy(state)) {
@@ -586,7 +635,7 @@ function renderRanking() {
 
         const name = document.createElement("span");
         name.className = "rank-name";
-        name.textContent = "Player " + entry.id;
+        name.textContent = playerNames[entry.id];
 
         const score = document.createElement("span");
         score.className = "rank-score";
@@ -625,7 +674,7 @@ function renderGameOver(state) {
     const overlay = document.getElementById("game-over-overlay");
     if (Game.isGameOver(state)) {
         document.getElementById("winner-message").textContent =
-            "Player " + Game.getWinner(state) + " Wins";
+            playerNames[Game.getWinner(state)] + " Wins";
         overlay.removeAttribute("hidden");
     } else {
         overlay.setAttribute("hidden", "");
