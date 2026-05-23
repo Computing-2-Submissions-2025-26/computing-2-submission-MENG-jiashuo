@@ -19,6 +19,7 @@
         </div>
 
         <div class="topbar-actions">
+            <button type="button" id="toggle-bgm" aria-label="Mute music">&#128266;</button>
             <button type="button" id="show-rules">Rules</button>
             <button type="button" id="new-game">New Game</button>
         </div>
@@ -55,13 +56,8 @@
                         </div>
                         <span class="lcd-unit">SEC</span>
                     </div>
-                    <div class="timer-track"
-                         role="progressbar"
-                         aria-valuemin="0"
-                         aria-valuemax="90"
-                         aria-valuenow="90"
-                         aria-label="Time remaining"
-                         id="timer-track">
+                    <div class="timer-track" role="progressbar" aria-valuemin="0" aria-valuemax="90" aria-valuenow="90"
+                        aria-label="Time remaining" id="timer-track">
                         <div class="timer-fill" id="timer-fill"></div>
                     </div>
                 </div>
@@ -205,6 +201,7 @@
         </div>
     </div>
 
+    <audio id="bgm" src="resource/videoplayback.mp3" loop preload="auto"></audio>
     <script type="module" src="main.js"></script>
 </body>
 

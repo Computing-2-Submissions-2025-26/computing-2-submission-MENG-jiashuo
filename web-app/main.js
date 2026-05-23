@@ -38,6 +38,9 @@ const TURN_TIME = 90;
 let timerInterval = null;
 let timeLeft = TURN_TIME;
 
+// BGM state
+let bgmEnabled = true;
+
 /* =========================================================================
  *  INITIALISATION
  * ========================================================================= */
@@ -70,12 +73,15 @@ function init() {
         .addEventListener("click", showRulesModal);
     document.getElementById("close-rules")
         .addEventListener("click", hideRulesModal);
+    document.getElementById("toggle-bgm")
+        .addEventListener("click", toggleBGM);
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape") {
             hideRulesModal();
         }
     });
 
+    initBGM();
     render(gameState);
 
     showRulesModal();
@@ -108,7 +114,8 @@ function handleCellClick(pos) {
 
     if (selectedCell === null) {
         const piece = Game.getPieceAt(gameState, pos);
-        if (piece !== null && piece.owner === Game.getCurrentPlayer(gameState)) {
+        const cp = Game.getCurrentPlayer(gameState);
+        if (piece !== null && piece.owner === cp) {
             selectedCell = pos;
             render(gameState);
         }
@@ -120,7 +127,8 @@ function handleCellClick(pos) {
 
     if (gameState === previous) {
         const piece = Game.getPieceAt(gameState, pos);
-        if (piece !== null && piece.owner === Game.getCurrentPlayer(gameState)) {
+        const cp = Game.getCurrentPlayer(gameState);
+        if (piece !== null && piece.owner === cp) {
             selectedCell = pos;
         } else {
             selectedCell = null;
@@ -227,6 +235,57 @@ function hideRulesModal() {
     if (!Game.isGameOver(gameState)) {
         startTimer();
     }
+}
+
+/* =========================================================================
+ *  BACKGROUND MUSIC
+ * ========================================================================= */
+
+function initBGM() {
+    const bgm = document.getElementById("bgm");
+    if (!bgm) {
+        return;
+    }
+    bgm.volume = 0.25;
+
+    // Attempt immediately — will be silently rejected if no user gesture yet.
+    bgm.play().catch(function () {});
+
+    // On every click (capture phase = fires before any handler),
+    // resume if the browser's autoplay policy had blocked or paused it.
+    document.addEventListener("click", function () {
+        if (bgmEnabled && bgm.paused) {
+            bgm.play().catch(function () {});
+        }
+    }, true);
+
+    updateBGMButton();
+}
+
+function toggleBGM() {
+    const bgm = document.getElementById("bgm");
+    if (!bgm) {
+        return;
+    }
+    bgmEnabled = !bgmEnabled;
+    if (bgmEnabled) {
+        bgm.play().catch(function () {});
+    } else {
+        bgm.pause();
+    }
+    updateBGMButton();
+}
+
+function updateBGMButton() {
+    const btn = document.getElementById("toggle-bgm");
+    if (!btn) {
+        return;
+    }
+    btn.textContent = bgmEnabled ? "🔊" : "🔇";
+    btn.setAttribute(
+        "aria-label", bgmEnabled ? "Mute music" : "Unmute music"
+    );
+    btn.classList.toggle("bgm-muted", !bgmEnabled);
 }
 
 /* =========================================================================
@@ -445,7 +504,8 @@ function renderStatus(state) {
     const currentPlayer = Game.getCurrentPlayer(state);
 
 
-    document.getElementById("current-player").textContent = "Player " + currentPlayer;
+    document.getElementById("current-player").textContent =
+        "Player " + currentPlayer;
     document.getElementById("current-player")
         .classList.toggle("player2-turn", currentPlayer === 2);
     document.getElementById("status-panel")
@@ -459,7 +519,8 @@ function renderStatus(state) {
     const msg = document.getElementById("status-message");
 
     if (Game.isGameOver(state)) {
-        msg.textContent = "Game over: Player " + Game.getWinner(state) + " wins!";
+        msg.textContent =
+            "Game over: Player " + Game.getWinner(state) + " wins!";
         return;
     }
     if (Game.canDeploy(state)) {
