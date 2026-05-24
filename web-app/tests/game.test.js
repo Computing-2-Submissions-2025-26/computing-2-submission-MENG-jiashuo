@@ -67,13 +67,18 @@ describe("makeMove", function () {
 
         beforeEach(function () {
             let state = Game.createInitialGame();
-            // Each side advances a Bomber; then each side uses a Fighter
-            // to clear the Bomber cooldown; then P1's Bomber captures.
-            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
-            state = Game.makeMove(state, { row: 7, col: 2 }, { row: 4, col: 2 });
+            // Each Bomber advances 2 squares; each side clears its cooldown
+            // with a Fighter; P1 Bomber advances 2 more; both sides pass a
+            // turn; P1 clears its second cooldown; P2 passes; P1 captures.
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 2, col: 2 });
+            state = Game.makeMove(state, { row: 7, col: 2 }, { row: 6, col: 2 });
             state = Game.makeMove(state, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
             state = Game.makeMove(state, { row: 7, col: 7 }, { row: 5, col: 6 });
-            after = Game.makeMove(state, { row: 3, col: 2 }, { row: 4, col: 2 });
+            state = Game.makeMove(state, { row: 2, col: 2 }, { row: 4, col: 2 });
+            state = Game.makeMove(state, { row: 5, col: 6 }, { row: 3, col: 7 });
+            state = Game.makeMove(state, FIGHTER_JUMP_TARGET, { row: 4, col: 0 });
+            state = Game.makeMove(state, { row: 3, col: 7 }, { row: 5, col: 6 });
+            after = Game.makeMove(state, { row: 4, col: 2 }, { row: 6, col: 2 });
         });
 
         it("removes the opposing piece from the board", function () {
@@ -82,7 +87,7 @@ describe("makeMove", function () {
         });
 
         it("places the moving piece on the target square", function () {
-            expect(Game.getPieceAt(after, { row: 4, col: 2 }))
+            expect(Game.getPieceAt(after, { row: 6, col: 2 }))
                 .to.deep.equal({ type: "bomber", owner: 1 });
         });
 
@@ -378,44 +383,81 @@ describe("makeMove", function () {
 
         it("forbids the same Bomber from moving on the player's next turn", function () {
             let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 2, col: 2 });
             state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
 
             const before = state;
-            const after = Game.makeMove(state, { row: 3, col: 2 }, { row: 4, col: 2 });
+            const after = Game.makeMove(state, { row: 2, col: 2 }, { row: 3, col: 2 });
             expect(after, "Bomber on cooldown must be unable to move")
                 .to.equal(before);
         });
 
         it("returns no legal moves for a Bomber on cooldown", function () {
             let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 2, col: 2 });
             state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
 
-            expect(Game.getLegalMoves(state, { row: 3, col: 2 })).to.deep.equal([]);
+            expect(Game.getLegalMoves(state, { row: 2, col: 2 })).to.deep.equal([]);
         });
 
         it("clears the cooldown after the player moves a different piece", function () {
             let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 2, col: 2 });
             state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
             // P1 moves a different piece — this should clear the cooldown
             state = Game.makeMove(state, P1_FIGHTER_START, FIGHTER_JUMP_TARGET);
             state = Game.makeMove(state, { row: 7, col: 7 }, { row: 5, col: 6 });
 
             const before = state;
-            const after = Game.makeMove(state, { row: 3, col: 2 }, { row: 4, col: 2 });
+            const after = Game.makeMove(state, { row: 2, col: 2 }, { row: 3, col: 2 });
             expect(after, "Bomber should be free to move again after a non-Bomber turn")
                 .to.not.equal(before);
         });
 
         it("exposes the resting Bomber's position via getCooldownBomber", function () {
             let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, { row: 3, col: 2 });
+            state = Game.makeMove(state, P1_BOMBER_START, { row: 2, col: 2 });
 
             expect(Game.getCooldownBomber(state, 1))
-                .to.deep.equal({ row: 3, col: 2 });
+                .to.deep.equal({ row: 2, col: 2 });
             expect(Game.getCooldownBomber(state, 2)).to.equal(null);
+        });
+    });
+
+    /* ================================================================
+     *  J. Recon movement range
+     *  Recon slides diagonally up to 2 squares; the 3rd square is out
+     *  of range regardless of whether it is occupied.
+     * ================================================================ */
+    describe("Recon movement range", function () {
+
+        it("can reach the 2nd diagonal square but not the 3rd", function () {
+            const initial = Game.createInitialGame();
+            const customBoard = initial.board.map(
+                (row, r) => row.map(
+                    (cell, c) => {
+                        if (r === 4 && c === 4) {
+                            return { type: "recon", owner: 1 };
+                        }
+                        if (r === 0 && c === 1) {
+                            return null;
+                        }
+                        return cell;
+                    }
+                )
+            );
+            const state = { ...initial, board: customBoard };
+            const moves = Game.getLegalMoves(state, { row: 4, col: 4 });
+
+            expect(
+                moves.some((p) => p.row === 6 && p.col === 6),
+                "2nd diagonal square SE must be reachable"
+            ).to.equal(true);
+
+            expect(
+                moves.some((p) => p.row === 7 && p.col === 7),
+                "3rd diagonal square SE must be out of range"
+            ).to.equal(false);
         });
     });
 

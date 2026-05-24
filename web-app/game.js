@@ -30,9 +30,9 @@
  * The kind of aircraft a piece represents.
  *
  *  - "fighter" — moves in an L-shape; the only piece that can jump over others.
- *  - "bomber"  — moves up to three squares along ranks and files; cannot jump;
+ *  - "bomber"  — moves up to two squares along ranks and files; cannot jump;
  *                must rest one turn between consecutive moves.
- *  - "recon"   — moves up to three squares diagonally; cannot jump.
+ *  - "recon"   — moves up to two squares diagonally; cannot jump.
  *  - "tanker"  — moves up to two squares in any direction; can carry one
  *                friendly piece (other than Command) across the board.
  *  - "command" — moves one square in any direction; capturing the opponent's
@@ -155,8 +155,8 @@ const ALL_DIRECTIONS = [
 
 const BOARDABLE_TYPES = ["fighter", "bomber", "recon"];
 
-const BOMBER_RANGE = 3;
-const RECON_RANGE = 3;
+const BOMBER_RANGE = 2;
+const RECON_RANGE = 2;
 const TANKER_RANGE = 2;
 
 /* =========================================================================
