@@ -135,6 +135,32 @@ function handleCellClick(pos) {
         return;
     }
 
+    // Lock-on attack: Fighter destroys an adjacent enemy in place
+    const selPiece = Game.getPieceAt(gameState, selectedCell);
+    if (selPiece !== null && selPiece.type === "fighter") {
+        const lockOns = Game.getLockOnTargets(gameState, selectedCell);
+        if (lockOns.some((t) => t.row === pos.row && t.col === pos.col)) {
+            const previous = gameState;
+            gameState = Game.lockOnAttack(gameState, selectedCell, pos);
+            updateScoresFromCaptures(previous, gameState);
+            selectedCell = null;
+            const capturedAt = getCaptureTarget(previous, gameState);
+            render(gameState);
+            if (capturedAt !== null) {
+                triggerExplosion(capturedAt);
+                playBoomSound();
+                shakeBoard();
+            }
+            if (Game.isGameOver(gameState)) {
+                lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
+                stopTimer();
+            } else {
+                startTimer();
+            }
+            return;
+        }
+    }
+
     const previous = gameState;
     gameState = Game.makeMove(gameState, selectedCell, pos);
 
@@ -495,6 +521,9 @@ function renderBoard(state) {
     const legalTargets = (selectedCell !== null && !Game.canDeploy(state))
         ? Game.getLegalMoves(state, selectedCell)
         : [];
+    const lockOnTargets = (selectedCell !== null && !Game.canDeploy(state))
+        ? Game.getLockOnTargets(state, selectedCell)
+        : [];
     const deployTargets = Game.canDeploy(state)
         ? Game.getDeployTargets(state)
         : [];
@@ -539,6 +568,9 @@ function renderBoard(state) {
         }
         if (legalTargets.some((p) => p.row === row && p.col === col)) {
             cell.classList.add("cell-legal");
+        }
+        if (lockOnTargets.some((p) => p.row === row && p.col === col)) {
+            cell.classList.add("cell-lockon");
         }
         if (deployTargets.some((p) => p.row === row && p.col === col)) {
             cell.classList.add("cell-deploy-target");

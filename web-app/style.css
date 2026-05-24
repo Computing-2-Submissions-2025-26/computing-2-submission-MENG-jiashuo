@@ -13,6 +13,7 @@
     --highlight-selected: #ffd700;
     --highlight-legal: rgba(80, 220, 100, 0.55);
     --highlight-deploy: rgba(255, 165, 0, 0.85);
+    --highlight-lockon: rgba(220, 50, 50, 0.9);
     --cell-size: 80px;
 }
 
@@ -418,6 +419,32 @@ header h1 {
     z-index: 3;
     pointer-events: none;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== Lock-on attack targets (red ring over enemy piece) ===== */
+
+.cell-lockon {
+    box-shadow: inset 0 0 0 3px var(--highlight-lockon);
+}
+
+.cell-lockon.cell-has-piece::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 70px;
+    height: 70px;
+    background-color: transparent;
+    border: 5px solid var(--highlight-lockon);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: lockon-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes lockon-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
 }
 
 /* ===== Info panel ===== */

@@ -461,4 +461,192 @@ describe("makeMove", function () {
         });
     });
 
+    /* ================================================================
+     *  K. Lock-on attack (Fighter ability)
+     *  A Fighter may destroy an adjacent enemy in place of its normal
+     *  L-jump. It stays on its square; the target is removed.
+     * ================================================================ */
+    describe("lockOnAttack and getLockOnTargets", function () {
+
+        function makeCustomBoard(initial, overrides) {
+            return initial.board.map(
+                (row, r) => row.map(
+                    (cell, c) => Object.prototype.hasOwnProperty.call(
+                        overrides, r + "," + c
+                    ) ? overrides[r + "," + c] : cell
+                )
+            );
+        }
+
+        function basicState() {
+            const initial = Game.createInitialGame();
+            const board = makeCustomBoard(initial, {
+                "4,4": { type: "fighter", owner: 1 },
+                "0,0": null,
+                "4,5": { type: "bomber", owner: 2 }
+            });
+            return { ...initial, board };
+        }
+
+        const FIGHTER_POS = { row: 4, col: 4 };
+        const TARGET_POS  = { row: 4, col: 5 };
+
+        describe("lockOnAttack", function () {
+
+            it("removes the targeted enemy from the board", function () {
+                const after = Game.lockOnAttack(
+                    basicState(), FIGHTER_POS, TARGET_POS
+                );
+                expect(Game.getPieceAt(after, TARGET_POS)).to.equal(null);
+            });
+
+            it("keeps the Fighter on its original square", function () {
+                const after = Game.lockOnAttack(
+                    basicState(), FIGHTER_POS, TARGET_POS
+                );
+                expect(Game.getPieceAt(after, FIGHTER_POS))
+                    .to.deep.equal({ type: "fighter", owner: 1 });
+            });
+
+            it("passes the turn to the opponent", function () {
+                const after = Game.lockOnAttack(
+                    basicState(), FIGHTER_POS, TARGET_POS
+                );
+                expect(Game.getCurrentPlayer(after)).to.equal(2);
+            });
+
+            it("records a capture entry with correct fields", function () {
+                const after = Game.lockOnAttack(
+                    basicState(), FIGHTER_POS, TARGET_POS
+                );
+                const history = Game.getMoveHistory(after);
+                expect(history).to.have.lengthOf(1);
+                const entry = history[0];
+                expect(entry.kind).to.equal("capture");
+                expect(entry.from).to.deep.equal(FIGHTER_POS);
+                expect(entry.to).to.deep.equal(TARGET_POS);
+                expect(entry.piece).to.deep.equal({ type: "fighter", owner: 1 });
+                expect(entry.captured).to.deep.equal(
+                    { type: "bomber", owner: 2 }
+                );
+            });
+
+            it("ends the game when the target is the enemy Command", function () {
+                const initial = Game.createInitialGame();
+                const board = makeCustomBoard(initial, {
+                    "4,4": { type: "fighter", owner: 1 },
+                    "0,0": null,
+                    "4,5": { type: "command", owner: 2 },
+                    "7,4": null
+                });
+                const state = { ...initial, board };
+                const after = Game.lockOnAttack(state, FIGHTER_POS, TARGET_POS);
+                expect(Game.isGameOver(after)).to.equal(true);
+                expect(Game.getWinner(after)).to.equal(1);
+                expect(Game.getCurrentPlayer(after)).to.equal(1);
+            });
+
+            it("destroys both the Tanker and its passenger", function () {
+                const initial = Game.createInitialGame();
+                const board = makeCustomBoard(initial, {
+                    "4,4": { type: "fighter", owner: 1 },
+                    "0,0": null,
+                    "4,5": { type: "tanker", owner: 2 },
+                    "7,3": null
+                });
+                const state = {
+                    ...initial,
+                    board,
+                    carrying: { 1: null, 2: { type: "bomber", owner: 2 } }
+                };
+                const after = Game.lockOnAttack(state, FIGHTER_POS, TARGET_POS);
+                const captures = Game.getMoveHistory(after)
+                    .filter((m) => m.kind === "capture");
+                expect(captures).to.have.lengthOf(2);
+                expect(Game.getCarriedPlane(after, 2)).to.equal(null);
+            });
+
+            it("returns state unchanged for a non-adjacent target", function () {
+                const state = basicState();
+                const after = Game.lockOnAttack(
+                    state, FIGHTER_POS, { row: 4, col: 7 }
+                );
+                expect(after).to.equal(state);
+            });
+
+            it("returns state unchanged when target square is empty", function () {
+                const state = basicState();
+                const after = Game.lockOnAttack(
+                    state, FIGHTER_POS, { row: 4, col: 3 }
+                );
+                expect(after).to.equal(state);
+            });
+
+            it("returns state unchanged when target is a friendly piece", function () {
+                const initial = Game.createInitialGame();
+                const board = makeCustomBoard(initial, {
+                    "4,4": { type: "fighter", owner: 1 },
+                    "0,0": null,
+                    "4,5": { type: "recon", owner: 1 },
+                    "0,6": null
+                });
+                const state = { ...initial, board };
+                const after = Game.lockOnAttack(state, FIGHTER_POS, TARGET_POS);
+                expect(after).to.equal(state);
+            });
+
+            it("does not mutate the input state (purity)", function () {
+                const state = basicState();
+                const snapshot = JSON.parse(JSON.stringify(state));
+                Game.lockOnAttack(state, FIGHTER_POS, TARGET_POS);
+                expect(state).to.deep.equal(snapshot);
+            });
+        });
+
+        describe("getLockOnTargets", function () {
+
+            it("returns exactly the adjacent squares with enemy pieces", function () {
+                const initial = Game.createInitialGame();
+                const board = makeCustomBoard(initial, {
+                    "4,4": { type: "fighter", owner: 1 },
+                    "0,0": null,
+                    "3,3": { type: "bomber", owner: 2 },
+                    "4,5": { type: "recon", owner: 2 },
+                    "3,4": { type: "recon", owner: 1 },
+                    "0,6": null
+                });
+                const state = { ...initial, board };
+                const targets = Game.getLockOnTargets(state, FIGHTER_POS);
+                expect(targets.some((p) => p.row === 3 && p.col === 3))
+                    .to.equal(true);
+                expect(targets.some((p) => p.row === 4 && p.col === 5))
+                    .to.equal(true);
+                expect(targets.some((p) => p.row === 3 && p.col === 4))
+                    .to.equal(false);
+            });
+
+            it("returns [] when the piece is not a Fighter", function () {
+                const initial = Game.createInitialGame();
+                expect(Game.getLockOnTargets(initial, { row: 0, col: 2 }))
+                    .to.deep.equal([]);
+            });
+
+            it("returns [] during the deploy phase", function () {
+                let state = Game.createInitialGame();
+                state = Game.makeMove(
+                    state, { row: 0, col: 2 }, { row: 0, col: 3 }
+                );
+                state = Game.makeMove(
+                    state, { row: 7, col: 0 }, { row: 5, col: 1 }
+                );
+                state = Game.makeMove(
+                    state, { row: 0, col: 3 }, { row: 2, col: 3 }
+                );
+                expect(Game.canDeploy(state)).to.equal(true);
+                expect(Game.getLockOnTargets(state, { row: 0, col: 7 }))
+                    .to.deep.equal([]);
+            });
+        });
+    });
+
 });

@@ -691,6 +691,121 @@ function skipDeploy(state) {
 }
 
 /* =========================================================================
+ *  LOCK-ON ATTACK
+ * ========================================================================= */
+
+/**
+ * Find every adjacent square that holds an enemy piece the current
+ * player's Fighter at `fighterPosition` may lock on to and destroy.
+ * @param   {GameState} state
+ * @param   {Position}  fighterPosition
+ * @returns {Array<Position>}
+ */
+function getLockOnTargets(state, fighterPosition) {
+    if (state.awaitingDeploy) {
+        return [];
+    }
+    if (state.status !== "playing") {
+        return [];
+    }
+    const fighter = getPieceAt(state, fighterPosition);
+    if (fighter === null
+        || fighter.type !== "fighter"
+        || fighter.owner !== state.currentPlayer) {
+        return [];
+    }
+    return ALL_DIRECTIONS
+        .map(([dr, dc]) => ({
+            row: fighterPosition.row + dr,
+            col: fighterPosition.col + dc
+        }))
+        .filter((pos) => isOnBoard(pos.row, pos.col))
+        .filter(function (pos) {
+            const target = state.board[pos.row][pos.col];
+            return target !== null && target.owner !== fighter.owner;
+        });
+}
+
+/**
+ * Destroy the enemy piece at `targetPosition` using the Fighter at
+ * `fighterPosition`. The Fighter stays in place; the target is removed.
+ * Returns the unchanged state if the action is illegal.
+ * @param   {GameState} state
+ * @param   {Position}  fighterPosition
+ * @param   {Position}  targetPosition
+ * @returns {GameState}
+ */
+function lockOnAttack(state, fighterPosition, targetPosition) {
+    if (state.awaitingDeploy) {
+        return state;
+    }
+    if (state.status !== "playing") {
+        return state;
+    }
+    const fighter = getPieceAt(state, fighterPosition);
+    if (fighter === null
+        || fighter.type !== "fighter"
+        || fighter.owner !== state.currentPlayer) {
+        return state;
+    }
+    const dr = targetPosition.row - fighterPosition.row;
+    const dc = targetPosition.col - fighterPosition.col;
+    if (!isOnBoard(targetPosition.row, targetPosition.col)
+        || Math.abs(dr) > 1
+        || Math.abs(dc) > 1
+        || (dr === 0 && dc === 0)) {
+        return state;
+    }
+    const target = getPieceAt(state, targetPosition);
+    if (target === null || target.owner === fighter.owner) {
+        return state;
+    }
+
+    const mainRecord = {
+        kind: "capture",
+        from: fighterPosition,
+        to: targetPosition,
+        piece: fighter,
+        captured: target
+    };
+
+    const passengerLost = target.type === "tanker"
+        && state.carrying[target.owner] !== null;
+    const lostPassenger = passengerLost ? state.carrying[target.owner] : null;
+    const extraRecords = passengerLost
+        ? [{
+            kind: "capture",
+            from: targetPosition,
+            to: targetPosition,
+            piece: fighter,
+            captured: lostPassenger
+        }]
+        : [];
+
+    const newCarrying = passengerLost
+        ? { ...state.carrying, [target.owner]: null }
+        : state.carrying;
+
+    const newBoard = setPiece(state.board, targetPosition, null);
+    const gameEnded = target.type === "command";
+    const newStatus = gameEnded
+        ? (fighter.owner === 1 ? "player1Won" : "player2Won")
+        : state.status;
+
+    return {
+        ...state,
+        board: newBoard,
+        moveHistory: [...state.moveHistory, mainRecord, ...extraRecords],
+        currentPlayer: gameEnded
+            ? state.currentPlayer
+            : otherPlayer(state.currentPlayer),
+        carrying: newCarrying,
+        status: newStatus,
+        lastMovedBombers: { ...state.lastMovedBombers, [fighter.owner]: null }
+    };
+}
+
+/* =========================================================================
  *  EXPORTS
  * ========================================================================= */
 
@@ -709,5 +824,7 @@ export {
     getWinner,
     makeMove,
     deployPlane,
-    skipDeploy
+    skipDeploy,
+    getLockOnTargets,
+    lockOnAttack
 };
