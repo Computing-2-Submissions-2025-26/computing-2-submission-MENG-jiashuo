@@ -705,10 +705,13 @@ function renderCapturedPieces(state) {
 function renderGameOver(state) {
     const overlay = document.getElementById("game-over-overlay");
     if (Game.isGameOver(state)) {
+        const winner = Game.getWinner(state);
         document.getElementById("winner-message").textContent =
-            playerNames[Game.getWinner(state)] + " Wins";
+            playerNames[winner] + " Wins";
+        overlay.classList.toggle("player2-wins", winner === 2);
         overlay.removeAttribute("hidden");
     } else {
+        overlay.classList.remove("player2-wins");
         overlay.setAttribute("hidden", "");
     }
 }

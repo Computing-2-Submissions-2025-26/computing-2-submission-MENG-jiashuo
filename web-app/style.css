@@ -2,6 +2,13 @@
  *  Aircraft Chess — styling.
  * ========================================================================= */
 
+@font-face {
+    font-family: "DS-Digital";
+    src: url("resource/DS-DIGIB.TTF") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
     --bg-primary: #0f1419;
     --bg-secondary: #1a2332;
@@ -254,8 +261,8 @@ header h1 {
 }
 
 .piece-rule img {
-    width: 48px;
-    height: 48px;
+    width: 70px;
+    height: 70px;
     image-rendering: pixelated;
     flex-shrink: 0;
 }
@@ -443,8 +450,15 @@ header h1 {
 }
 
 @keyframes lockon-pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.45; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.45;
+    }
 }
 
 /* ===== Info panel ===== */
@@ -637,6 +651,18 @@ button:focus {
     color: var(--accent);
     font-size: 1.8rem;
     letter-spacing: 0.15em;
+}
+
+#game-over-overlay.player2-wins .overlay-content {
+    border-top-color: #ff5050;
+}
+
+#game-over-overlay.player2-wins #winner-message {
+    color: #ff5050;
+}
+
+#game-over-overlay.player2-wins #new-game-overlay {
+    background-color: #ff5050;
 }
 
 /* ===== Responsive ===== */
@@ -987,10 +1013,9 @@ button:focus {
 
 .lcd-ghost-digits,
 .lcd-digits {
-    font-family: "Courier New", "Lucida Console", monospace;
-    font-size: 2.8rem;
+    font-family: "DS-Digital", "Courier New", monospace;
+    font-size: 3.8rem;
     font-weight: bold;
-    letter-spacing: 0.18em;
     font-variant-numeric: tabular-nums;
     line-height: 1;
     display: block;
@@ -1002,7 +1027,7 @@ button:focus {
     top: 0;
     left: 0;
     width: 100%;
-    color: rgba(0, 200, 50, 0.1);
+    color: rgba(3, 228, 59, 0.1);
     pointer-events: none;
     user-select: none;
     z-index: 0;
@@ -1018,7 +1043,7 @@ button:focus {
 .lcd-unit {
     font-family: "Courier New", monospace;
     font-size: 0.6rem;
-    color: #0e3a0e;
+    color: #067206;
     letter-spacing: 0.25em;
     text-transform: uppercase;
     align-self: flex-end;
@@ -1029,7 +1054,7 @@ button:focus {
 /* Progress bar */
 .timer-track {
     height: 7px;
-    background: #0a180a;
+    background: #137613;
     border-radius: 4px;
     overflow: hidden;
     border: 1px solid #162816;
