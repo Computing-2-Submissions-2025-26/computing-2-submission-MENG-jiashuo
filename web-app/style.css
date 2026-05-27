@@ -461,6 +461,32 @@ header h1 {
     }
 }
 
+/* ===== Keyboard cursor (WASD / arrow navigation) ===== */
+
+.cell-cursor {
+    box-shadow: inset 0 0 0 3px #ffe066;
+    z-index: 2;
+}
+
+/* ===== Key-cap badges on buttons ===== */
+
+kbd.keycap {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    font-family: "Courier New", monospace;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 3px;
+    vertical-align: middle;
+    line-height: 1.4;
+    letter-spacing: 0;
+    pointer-events: none;
+}
+
 /* ===== Info panel ===== */
 
 .info-panel {

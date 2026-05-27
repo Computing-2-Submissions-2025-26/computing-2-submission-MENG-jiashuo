@@ -24,6 +24,7 @@ const PIECE_VALUES = {
 
 let gameState = Game.createInitialGame();
 let selectedCell = null;
+let cursorPos = { row: 0, col: 0 };
 
 // Session-level scores. Persist across multiple games within the same
 // page load; cleared only when the user refreshes.
@@ -88,9 +89,100 @@ function init() {
     inp2.addEventListener("keydown", function (e) {
         if (e.key === "Enter") { handleNameEntry(); }
     });
+
+    board.addEventListener("focusin", function (e) {
+        if (e.target.dataset.row !== undefined) {
+            cursorPos = {
+                row: Number(e.target.dataset.row),
+                col: Number(e.target.dataset.col)
+            };
+            render(gameState);
+        }
+    });
+
     document.addEventListener("keydown", function (event) {
+        if (event.target.tagName === "INPUT") {
+            return;
+        }
+
+        const rulesModal = document.getElementById("rules-modal");
+        const nameModal = document.getElementById("name-entry-modal");
+        const rulesOpen = !rulesModal.hasAttribute("hidden");
+        const nameOpen = !nameModal.hasAttribute("hidden");
+
         if (event.key === "Escape") {
-            hideRulesModal();
+            if (rulesOpen) {
+                hideRulesModal();
+            } else if (!nameOpen) {
+                selectedCell = null;
+                render(gameState);
+            }
+            return;
+        }
+
+        if (rulesOpen || nameOpen) {
+            return;
+        }
+
+        if (event.key === "r" || event.key === "R") {
+            event.preventDefault();
+            showRulesModal();
+            return;
+        }
+
+        if (event.key === "v" || event.key === "V") {
+            event.preventDefault();
+            handleNewGame();
+            return;
+        }
+
+        if (event.key === "e" || event.key === "E") {
+            event.preventDefault();
+            if (Game.canDeploy(gameState)) {
+                handleSkipDeploy();
+            }
+            return;
+        }
+
+        let dr = 0;
+        let dc = 0;
+        if (event.key === "w" || event.key === "W"
+                || event.key === "ArrowUp") {
+            dr = -1;
+        } else if (event.key === "s" || event.key === "S"
+                || event.key === "ArrowDown") {
+            dr = 1;
+        } else if (event.key === "a" || event.key === "A"
+                || event.key === "ArrowLeft") {
+            dc = -1;
+        } else if (event.key === "d" || event.key === "D"
+                || event.key === "ArrowRight") {
+            dc = 1;
+        }
+
+        if (dr !== 0 || dc !== 0) {
+            event.preventDefault();
+            cursorPos = {
+                row: Math.max(0, Math.min(7, cursorPos.row + dr)),
+                col: Math.max(0, Math.min(7, cursorPos.col + dc))
+            };
+            const sel = "[data-row=\"" + cursorPos.row
+                + "\"][data-col=\"" + cursorPos.col + "\"]";
+            const target = document.querySelector(".cell" + sel);
+            if (target) {
+                target.focus({ preventScroll: true });
+            }
+            render(gameState);
+            return;
+        }
+
+        if (event.key === "Enter") {
+            const focused = document.activeElement;
+            if (focused && focused.classList.contains("cell")) {
+                return;
+            }
+            event.preventDefault();
+            activateCell(cursorPos);
         }
     });
 
@@ -105,6 +197,10 @@ function init() {
  * ========================================================================= */
 
 function handleCellClick(pos) {
+    activateCell(pos);
+}
+
+function activateCell(pos) {
     if (Game.isGameOver(gameState)) {
         return;
     }
@@ -577,6 +673,9 @@ function renderBoard(state) {
         }
         if (isCooldownHere) {
             cell.classList.add("cell-cooldown");
+        }
+        if (isSamePos(cursorPos, { row: row, col: col })) {
+            cell.classList.add("cell-cursor");
         }
     });
 }
