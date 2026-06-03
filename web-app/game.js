@@ -33,7 +33,8 @@
  *  - "bomber"  — moves up to two squares along ranks and files; cannot jump;
  *                must rest one turn between consecutive moves.
  *  - "recon"   — moves up to two squares diagonally; cannot jump.
- *  - "tanker"  — moves up to two squares in any direction; can carry one
+ *  - "tanker"  — moves one square in any direction (surrounding only);
+ *                can carry one
  *                friendly piece (other than Command) across the board.
  *  - "command" — moves one square in any direction; capturing the opponent's
  *                Command wins the game.
@@ -157,7 +158,7 @@ const BOARDABLE_TYPES = ["fighter", "bomber", "recon"];
 
 const BOMBER_RANGE = 2;
 const RECON_RANGE = 2;
-const TANKER_RANGE = 2;
+const TANKER_RANGE = 1;
 
 /* =========================================================================
  *  STATE CREATION

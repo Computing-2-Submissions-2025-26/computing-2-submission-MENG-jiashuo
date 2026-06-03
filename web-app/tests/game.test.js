@@ -16,7 +16,7 @@ const P1_BOMBER_START = { row: 0, col: 2 };
 const P1_TANKER_START = { row: 0, col: 3 };
 const P2_FIGHTER_START = { row: 7, col: 0 };
 const P2_FIGHTER_TARGET = { row: 5, col: 1 };
-const TANKER_DESTINATION = { row: 2, col: 3 };
+const TANKER_DESTINATION = { row: 1, col: 3 };
 
 
 describe("makeMove", function () {
@@ -640,7 +640,7 @@ describe("makeMove", function () {
                     state, { row: 7, col: 0 }, { row: 5, col: 1 }
                 );
                 state = Game.makeMove(
-                    state, { row: 0, col: 3 }, { row: 2, col: 3 }
+                    state, { row: 0, col: 3 }, { row: 1, col: 3 }
                 );
                 expect(Game.canDeploy(state)).to.equal(true);
                 expect(Game.getLockOnTargets(state, { row: 0, col: 7 }))

@@ -25,6 +25,7 @@ const PIECE_VALUES = {
 let gameState = Game.createInitialGame();
 let selectedCell = null;
 let cursorPos = { row: 0, col: 0 };
+let inputMode = "mouse";
 
 // Session-level scores. Persist across multiple games within the same
 // page load; cleared only when the user refreshes.
@@ -90,12 +91,9 @@ function init() {
         if (e.key === "Enter") { handleNameEntry(); }
     });
 
-    board.addEventListener("focusin", function (e) {
-        if (e.target.dataset.row !== undefined) {
-            cursorPos = {
-                row: Number(e.target.dataset.row),
-                col: Number(e.target.dataset.col)
-            };
+    document.addEventListener("mousedown", function () {
+        if (inputMode !== "mouse") {
+            inputMode = "mouse";
             render(gameState);
         }
     });
@@ -104,6 +102,8 @@ function init() {
         if (event.target.tagName === "INPUT") {
             return;
         }
+
+        inputMode = "keyboard";
 
         const rulesModal = document.getElementById("rules-modal");
         const nameModal = document.getElementById("name-entry-modal");
@@ -162,10 +162,7 @@ function init() {
 
         if (dr !== 0 || dc !== 0) {
             event.preventDefault();
-            cursorPos = {
-                row: Math.max(0, Math.min(7, cursorPos.row + dr)),
-                col: Math.max(0, Math.min(7, cursorPos.col + dc))
-            };
+            moveCursor(dr, dc);
             const sel = "[data-row=\"" + cursorPos.row
                 + "\"][data-col=\"" + cursorPos.col + "\"]";
             const target = document.querySelector(".cell" + sel);
@@ -596,6 +593,7 @@ function executeRandomMove() {
  * ========================================================================= */
 
 function render(state) {
+    snapCursor(state);
     renderBoard(state);
     renderStatus(state);
     renderTankerStatus(state);
@@ -607,6 +605,100 @@ function render(state) {
 
 function isSamePos(a, b) {
     return a !== null && b !== null && a.row === b.row && a.col === b.col;
+}
+
+/* =========================================================================
+ *  SMART CURSOR HELPERS
+ * ========================================================================= */
+
+function getValidCursorCells(state) {
+    if (Game.isGameOver(state)) {
+        return [];
+    }
+    if (Game.canDeploy(state)) {
+        return Game.getDeployTargets(state);
+    }
+    if (selectedCell !== null) {
+        const moves = Game.getLegalMoves(state, selectedCell);
+        const lockOns = Game.getLockOnTargets(state, selectedCell);
+        return moves.concat(lockOns.filter(function (lo) {
+            return !moves.some(function (m) {
+                return m.row === lo.row && m.col === lo.col;
+            });
+        }));
+    }
+    const cp = Game.getCurrentPlayer(state);
+    const cells = [];
+    for (let r = 0; r < 8; r += 1) {
+        for (let c = 0; c < 8; c += 1) {
+            const piece = Game.getPieceAt(state, { row: r, col: c });
+            if (piece !== null && piece.owner === cp) {
+                cells.push({ row: r, col: c });
+            }
+        }
+    }
+    return cells;
+}
+
+function snapCursor(state) {
+    const valid = getValidCursorCells(state);
+    if (valid.length === 0) {
+        return;
+    }
+    const isValid = valid.some(function (p) {
+        return p.row === cursorPos.row && p.col === cursorPos.col;
+    });
+    if (!isValid) {
+        let nearest = valid[0];
+        let nearestDist = Infinity;
+        valid.forEach(function (p) {
+            const dr = p.row - cursorPos.row;
+            const dc = p.col - cursorPos.col;
+            const dist = dr * dr + dc * dc;
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = p;
+            }
+        });
+        cursorPos = nearest;
+    }
+}
+
+function moveCursor(dr, dc) {
+    const valid = getValidCursorCells(gameState);
+    if (valid.length === 0) {
+        return;
+    }
+    const cur = cursorPos;
+    let best = null;
+    let bestPrimary = Infinity;
+    let bestSecondary = Infinity;
+
+    valid.forEach(function (p) {
+        if (dr < 0 && p.row >= cur.row) { return; }
+        if (dr > 0 && p.row <= cur.row) { return; }
+        if (dc < 0 && p.col >= cur.col) { return; }
+        if (dc > 0 && p.col <= cur.col) { return; }
+
+        const primary = dr !== 0
+            ? Math.abs(p.row - cur.row)
+            : Math.abs(p.col - cur.col);
+        const secondary = dr !== 0
+            ? Math.abs(p.col - cur.col)
+            : Math.abs(p.row - cur.row);
+
+        if (primary < bestPrimary
+                || (primary === bestPrimary
+                    && secondary < bestSecondary)) {
+            bestPrimary = primary;
+            bestSecondary = secondary;
+            best = p;
+        }
+    });
+
+    if (best !== null) {
+        cursorPos = best;
+    }
 }
 
 function pieceDescription(piece) {
@@ -625,6 +717,7 @@ function renderBoard(state) {
         : [];
     const currentPlayer = Game.getCurrentPlayer(state);
     const cooldownPos = Game.getCooldownBomber(state, currentPlayer);
+    const validCursorCells = getValidCursorCells(state);
 
     document.querySelectorAll(".cell").forEach(function (cell) {
         const row = Number(cell.dataset.row);
@@ -643,6 +736,7 @@ function renderBoard(state) {
             img.alt = "";
             cell.appendChild(img);
             cell.classList.add("cell-has-piece");
+            cell.classList.add("piece-p" + piece.owner);
 
             const restingNote = isCooldownHere
                 ? " (resting, cannot move this turn)"
@@ -674,7 +768,9 @@ function renderBoard(state) {
         if (isCooldownHere) {
             cell.classList.add("cell-cooldown");
         }
-        if (isSamePos(cursorPos, { row: row, col: col })) {
+        if (inputMode === "keyboard"
+                && validCursorCells.length > 0
+                && isSamePos(cursorPos, { row: row, col: col })) {
             cell.classList.add("cell-cursor");
         }
     });
@@ -689,6 +785,8 @@ function renderStatus(state) {
     document.getElementById("current-player")
         .classList.toggle("player2-turn", currentPlayer === 2);
     document.getElementById("status-panel")
+        .classList.toggle("player2-turn", currentPlayer === 2);
+    document.getElementById("board")
         .classList.toggle("player2-turn", currentPlayer === 2);
     document.getElementById("label-p1")
         .classList.toggle("is-active", currentPlayer === 1);
@@ -786,15 +884,37 @@ function renderSkipButton(state) {
     button.classList.toggle("button-disabled", !Game.canDeploy(state));
 }
 
+const ROSTER_ORDER = [
+    "fighter", "recon", "bomber", "tanker",
+    "command",
+    "bomber", "recon", "fighter"
+];
+
 function renderCapturedPieces(state) {
     [1, 2].forEach(function (player) {
         const list = document.getElementById("captured-p" + player);
         list.innerHTML = "";
+
+        const killedCounts = {};
         Game.getCapturedPieces(state, player).forEach(function (piece) {
+            killedCounts[piece.type] = (killedCounts[piece.type] || 0) + 1;
+        });
+
+        const renderedKilled = {};
+        ROSTER_ORDER.forEach(function (type) {
             const li = document.createElement("li");
             const img = document.createElement("img");
-            img.src = "resource/p" + piece.owner + "_" + piece.type + ".png";
-            img.alt = pieceDescription(piece);
+            img.src = "resource/p" + player + "_" + type + ".png";
+            img.alt = type;
+
+            const alreadyLit = renderedKilled[type] || 0;
+            if (alreadyLit < (killedCounts[type] || 0)) {
+                li.classList.add("piece-killed");
+                renderedKilled[type] = alreadyLit + 1;
+            } else {
+                li.classList.add("piece-alive");
+            }
+
             li.appendChild(img);
             list.appendChild(li);
         });
