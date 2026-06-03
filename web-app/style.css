@@ -11,12 +11,12 @@
 
 :root {
     --bg-primary: #0f1419;
-    --bg-secondary: #1a2332;
-    --text-primary: #e0e6ed;
-    --text-secondary: #8a9aab;
+    --bg-secondary: #45454585;
+    --text-primary: #ffffff;
+    --text-secondary: #d8d8d8;
     --accent: #00a6ff;
-    --cell-light: #dbdbb6e3;
-    --cell-dark: #5e682ad9;
+    --cell-light: #fff0;
+    --cell-dark: #ddf4de17;
     --highlight-selected: #ffd700;
     --highlight-legal: rgba(0, 166, 255, 0.55);
     --highlight-deploy: rgba(255, 165, 0, 0.85);
@@ -311,12 +311,40 @@ header h1 {
     display: grid;
     grid-template-columns: repeat(8, var(--cell-size));
     grid-template-rows: repeat(8, var(--cell-size));
-    border: 6px solid;
-    color: #000000;
-    border-radius: 25px;
+    border: 5px solid #7bc599de;
+    border-radius: 5%;
     overflow: hidden;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    position: relative;
+    background:
+        radial-gradient(circle, rgba(0, 40, 0, 0.9) 0%, rgba(0, 10, 0, 1) 100%);
+    box-shadow:
+        0 0 20px rgba(0, 255, 102, 0.6),
+        inset 0 0 40px rgba(0, 255, 102, 0.3);
     justify-self: start;
+}
+
+.board::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    height: 30%;
+    background: linear-gradient(to bottom,
+            rgba(0, 255, 102, 0) 0%,
+            rgba(0, 255, 102, 0.15) 70%,
+            rgba(0, 255, 102, 0.5) 95%,
+            rgba(0, 255, 102, 0) 100%);
+    animation: radar-sweep 3s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes radar-sweep {
+    0% {
+        transform: translateY(-100%);
+    }
+
+    100% {
+        transform: translateY(433%);
+    }
 }
 
 .board.player2-turn {
@@ -658,16 +686,16 @@ kbd.keycap {
 
 button {
     font-family: inherit;
-    background-color: var(--accent);
-    color: var(--bg-primary);
-    border: none;
+    background-color: transparent;
+    color: #ffffff;
+    border: 2px solid #ffffff;
     padding: 0.55rem 1.3rem;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
     font-size: 0.95rem;
     letter-spacing: 0.05em;
-    transition: filter 0.15s;
+    transition: filter 0.15s, background-color 0.15s, color 0.15s;
 }
 
 button:hover {
@@ -779,13 +807,17 @@ button:focus {
 }
 
 #skip-deploy.button-active {
-    background-color: #054a87;
+    background-color: #00a6ff;
     color: white;
     cursor: pointer;
 }
 
+#status-panel.player2-turn #skip-deploy.button-active {
+    background-color: #ff5050;
+}
+
 #skip-deploy.button-disabled {
-    background-color: #b0b0b0;
+    background-color: #c7c7c726;
     color: white;
     cursor: not-allowed;
     opacity: 0.7;
@@ -1214,8 +1246,8 @@ button:focus {
 }
 
 .name-entry-content {
-    background-color: var(--bg-secondary);
-    border: 2px solid var(--accent);
+    background-color: rgba(34, 34, 34, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.927);
     border-radius: 8px;
     padding: 2rem 2.5rem;
     width: 100%;
@@ -1230,14 +1262,15 @@ button:focus {
     font-size: 1.6rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: rgba(255, 255, 255, 0.947);
     border-bottom: 1px solid rgba(0, 166, 255, 0.3);
     padding-bottom: 0.5rem;
 }
 
 .name-entry-subtitle {
     font-size: 0.88rem;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.947);
+    ;
     margin-top: -0.75rem;
 }
 
@@ -1252,17 +1285,18 @@ button:focus {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.947);
+    ;
     margin-bottom: 0.25rem;
 }
 
 .name-entry-fields input {
     width: 100%;
     padding: 0.6rem 0.85rem;
-    background: var(--bg-primary);
-    border: 1px solid #2f4a73;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid white;
     border-radius: 4px;
-    color: var(--text-primary);
+    color: #00e833;
     font-family: inherit;
     font-size: 1rem;
     outline: none;
@@ -1270,11 +1304,12 @@ button:focus {
 }
 
 .name-entry-fields input:focus {
-    border-color: var(--accent);
+    border-color: #00e833;
+    box-shadow: 0 0 6px rgba(0, 232, 51, 0.45);
 }
 
 .name-entry-fields input::placeholder {
-    color: #3a4a5a;
+    color: #aaaaaa;
 }
 
 #confirm-names {
