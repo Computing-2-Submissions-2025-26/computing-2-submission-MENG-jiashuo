@@ -46,7 +46,13 @@
         <aside class="info-panel">
 
             <section id="status-panel" aria-live="polite">
-                <p>Turn: <strong id="current-player">Player 1</strong></p>
+                <div class="turn-row">
+                    <p>Turn: <strong id="current-player">Player 1</strong></p>
+                    <button type="button" id="rookie-toggle" class="rookie-toggle" aria-pressed="false">
+                        <span class="rookie-toggle-dot" aria-hidden="true"></span>
+                        <span class="rookie-toggle-label">Show Type</span>
+                    </button>
+                </div>
 
                 <div class="timer-display" id="timer-display" aria-label="Turn timer">
                     <div class="lcd-panel">
@@ -139,7 +145,9 @@
                         <img src="resource/p1_fighter.png" alt="">
                         <img src="resource/p2_fighter.png" alt="">
                         <div>
-                            <strong>Fighter</strong>
+                            <strong>
+                                <h2 class="piece-symbol">F</h2>Fighter
+                            </strong>
                             <p>L-shape jump (like a chess knight). The only piece that can jump over others.
                                 <br>
                                 [Lock-on]: Instead of moving, a Fighter may destroy any enemy in one of the 8 adjacent
@@ -151,7 +159,9 @@
                         <img src="resource/p1_bomber.png" alt="">
                         <img src="resource/p2_bomber.png" alt="">
                         <div>
-                            <strong>Bomber</strong>
+                            <strong>
+                                <h2 class="piece-symbol">B</h2>Bomber
+                            </strong>
                             <p>Slides up to 2 squares orthogonally. Must rest one turn between moves.</p>
                         </div>
                     </div>
@@ -159,7 +169,9 @@
                         <img src="resource/p1_recon.png" alt="">
                         <img src="resource/p2_recon.png" alt="">
                         <div>
-                            <strong>Recon</strong>
+                            <strong>
+                                <h2 class="piece-symbol">R</h2>Recon
+                            </strong>
                             <p>Slides up to 2 squares diagonally.</p>
                         </div>
                     </div>
@@ -167,7 +179,9 @@
                         <img src="resource/p1_tanker.png" alt="">
                         <img src="resource/p2_tanker.png" alt="">
                         <div>
-                            <strong>Tanker</strong>
+                            <strong>
+                                <h2 class="piece-symbol">T</h2>Tanker
+                            </strong>
                             <p>Moves up to 2 squares in any direction. Can carry one friendly piece (except Command)
                                 across the board.</p>
                         </div>
@@ -176,7 +190,9 @@
                         <img src="resource/p1_command.png" alt="">
                         <img src="resource/p2_command.png" alt="">
                         <div>
-                            <strong>Command</strong>
+                            <strong>
+                                <h2 class="piece-symbol">C</h2>Command
+                            </strong>
                             <p>Moves 1 square in any direction. Protect it at all costs: losing it ends the game.</p>
                         </div>
                     </div>

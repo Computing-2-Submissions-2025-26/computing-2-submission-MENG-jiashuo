@@ -26,6 +26,7 @@ let gameState = Game.createInitialGame();
 let selectedCell = null;
 let cursorPos = { row: 0, col: 0 };
 let inputMode = "mouse";
+let rookieMode = false;
 
 
 let sessionScores = { 1: 0, 2: 0 };
@@ -78,6 +79,9 @@ function init() {
         .addEventListener("click", hideRulesModal);
     document.getElementById("toggle-bgm")
         .addEventListener("click", toggleBGM);
+    document.getElementById("rookie-toggle")
+        .addEventListener("click", toggleRookieMode);
+    updateRookieToggle();
     document.getElementById("confirm-names")
         .addEventListener("click", handleNameEntry);
     const inp1 = document.getElementById("name-p1");
@@ -87,6 +91,14 @@ function init() {
     const inp2 = document.getElementById("name-p2");
     inp2.addEventListener("keydown", function (e) {
         if (e.key === "Enter") { handleNameEntry(); }
+    });
+    [inp1, inp2].forEach(function (input) {
+        input.addEventListener("focus", function () {
+            input.classList.remove("confirmed");
+        });
+        input.addEventListener("blur", function () {
+            input.classList.add("confirmed");
+        });
     });
 
     document.addEventListener("mousedown", function () {
@@ -453,6 +465,21 @@ function updateBGMButton() {
     btn.classList.toggle("bgm-muted", !bgmEnabled);
 }
 
+function toggleRookieMode() {
+    rookieMode = !rookieMode;
+    updateRookieToggle();
+    renderBoard(gameState);
+}
+
+function updateRookieToggle() {
+    const btn = document.getElementById("rookie-toggle");
+    if (!btn) {
+        return;
+    }
+    btn.classList.toggle("rookie-on", rookieMode);
+    btn.setAttribute("aria-pressed", String(rookieMode));
+}
+
 /* =========================================================================
  *  TURN TIMER
  * ========================================================================= */
@@ -734,6 +761,14 @@ function renderBoard(state) {
             cell.appendChild(img);
             cell.classList.add("cell-has-piece");
             cell.classList.add("piece-p" + piece.owner);
+
+            if (rookieMode) {
+                const badge = document.createElement("span");
+                badge.className = "piece-badge piece-badge-p" + piece.owner;
+                badge.textContent = piece.type.charAt(0).toUpperCase();
+                badge.setAttribute("aria-hidden", "true");
+                cell.appendChild(badge);
+            }
 
             const restingNote = isCooldownHere
                 ? " (resting, cannot move this turn)"
