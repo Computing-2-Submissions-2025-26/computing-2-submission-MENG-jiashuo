@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aircraftChess.html">aircraftChess</a><ul class='methods'><li data-type='method'><a href="module-aircraftChess.html#~canDeploy">canDeploy</a></li><li data-type='method'><a href="module-aircraftChess.html#~createInitialGame">createInitialGame</a></li><li data-type='method'><a href="module-aircraftChess.html#~deployPlane">deployPlane</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCapturedPieces">getCapturedPieces</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCarriedPlane">getCarriedPlane</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCooldownBomber">getCooldownBomber</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCurrentPlayer">getCurrentPlayer</a></li><li data-type='method'><a href="module-aircraftChess.html#~getDeployTargets">getDeployTargets</a></li><li data-type='method'><a href="module-aircraftChess.html#~getLegalMoves">getLegalMoves</a></li><li data-type='method'><a href="module-aircraftChess.html#~getMoveHistory">getMoveHistory</a></li><li data-type='method'><a href="module-aircraftChess.html#~getPieceAt">getPieceAt</a></li><li data-type='method'><a href="module-aircraftChess.html#~getWinner">getWinner</a></li><li data-type='method'><a href="module-aircraftChess.html#~isGameOver">isGameOver</a></li><li data-type='method'><a href="module-aircraftChess.html#~makeMove">makeMove</a></li><li data-type='method'><a href="module-aircraftChess.html#~skipDeploy">skipDeploy</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aircraftChess.html">aircraftChess</a><ul class='methods'><li data-type='method'><a href="module-aircraftChess.html#~canDeploy">canDeploy</a></li><li data-type='method'><a href="module-aircraftChess.html#~createInitialGame">createInitialGame</a></li><li data-type='method'><a href="module-aircraftChess.html#~deployPlane">deployPlane</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCapturedPieces">getCapturedPieces</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCarriedPlane">getCarriedPlane</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCooldownBomber">getCooldownBomber</a></li><li data-type='method'><a href="module-aircraftChess.html#~getCurrentPlayer">getCurrentPlayer</a></li><li data-type='method'><a href="module-aircraftChess.html#~getDeployTargets">getDeployTargets</a></li><li data-type='method'><a href="module-aircraftChess.html#~getLegalMoves">getLegalMoves</a></li><li data-type='method'><a href="module-aircraftChess.html#~getLockOnTargets">getLockOnTargets</a></li><li data-type='method'><a href="module-aircraftChess.html#~getMoveHistory">getMoveHistory</a></li><li data-type='method'><a href="module-aircraftChess.html#~getPieceAt">getPieceAt</a></li><li data-type='method'><a href="module-aircraftChess.html#~getWinner">getWinner</a></li><li data-type='method'><a href="module-aircraftChess.html#~isGameOver">isGameOver</a></li><li data-type='method'><a href="module-aircraftChess.html#~lockOnAttack">lockOnAttack</a></li><li data-type='method'><a href="module-aircraftChess.html#~makeMove">makeMove</a></li><li data-type='method'><a href="module-aircraftChess.html#~skipDeploy">skipDeploy</a></li></ul></li></ul>
     
 </nav>
 
@@ -77,10 +77,11 @@
  * The kind of aircraft a piece represents.
  *
  *  - "fighter" — moves in an L-shape; the only piece that can jump over others.
- *  - "bomber"  — moves up to three squares along ranks and files; cannot jump;
+ *  - "bomber"  — moves up to two squares along ranks and files; cannot jump;
  *                must rest one turn between consecutive moves.
- *  - "recon"   — moves up to three squares diagonally; cannot jump.
- *  - "tanker"  — moves up to two squares in any direction; can carry one
+ *  - "recon"   — moves up to two squares diagonally; cannot jump.
+ *  - "tanker"  — moves one square in any direction (surrounding only);
+ *                can carry one
  *                friendly piece (other than Command) across the board.
  *  - "command" — moves one square in any direction; capturing the opponent's
  *                Command wins the game.
@@ -202,9 +203,9 @@ const ALL_DIRECTIONS = [
 
 const BOARDABLE_TYPES = ["fighter", "bomber", "recon"];
 
-const BOMBER_RANGE = 3;
-const RECON_RANGE = 3;
-const TANKER_RANGE = 2;
+const BOMBER_RANGE = 2;
+const RECON_RANGE = 2;
+const TANKER_RANGE = 1;
 
 /* =========================================================================
  *  STATE CREATION
@@ -738,6 +739,121 @@ function skipDeploy(state) {
 }
 
 /* =========================================================================
+ *  LOCK-ON ATTACK
+ * ========================================================================= */
+
+/**
+ * Find every adjacent square that holds an enemy piece the current
+ * player's Fighter at `fighterPosition` may lock on to and destroy.
+ * @param   {GameState} state
+ * @param   {Position}  fighterPosition
+ * @returns {Array&lt;Position>}
+ */
+function getLockOnTargets(state, fighterPosition) {
+    if (state.awaitingDeploy) {
+        return [];
+    }
+    if (state.status !== "playing") {
+        return [];
+    }
+    const fighter = getPieceAt(state, fighterPosition);
+    if (fighter === null
+        || fighter.type !== "fighter"
+        || fighter.owner !== state.currentPlayer) {
+        return [];
+    }
+    return ALL_DIRECTIONS
+        .map(([dr, dc]) => ({
+            row: fighterPosition.row + dr,
+            col: fighterPosition.col + dc
+        }))
+        .filter((pos) => isOnBoard(pos.row, pos.col))
+        .filter(function (pos) {
+            const target = state.board[pos.row][pos.col];
+            return target !== null &amp;&amp; target.owner !== fighter.owner;
+        });
+}
+
+/**
+ * Destroy the enemy piece at `targetPosition` using the Fighter at
+ * `fighterPosition`. The Fighter stays in place; the target is removed.
+ * Returns the unchanged state if the action is illegal.
+ * @param   {GameState} state
+ * @param   {Position}  fighterPosition
+ * @param   {Position}  targetPosition
+ * @returns {GameState}
+ */
+function lockOnAttack(state, fighterPosition, targetPosition) {
+    if (state.awaitingDeploy) {
+        return state;
+    }
+    if (state.status !== "playing") {
+        return state;
+    }
+    const fighter = getPieceAt(state, fighterPosition);
+    if (fighter === null
+        || fighter.type !== "fighter"
+        || fighter.owner !== state.currentPlayer) {
+        return state;
+    }
+    const dr = targetPosition.row - fighterPosition.row;
+    const dc = targetPosition.col - fighterPosition.col;
+    if (!isOnBoard(targetPosition.row, targetPosition.col)
+        || Math.abs(dr) > 1
+        || Math.abs(dc) > 1
+        || (dr === 0 &amp;&amp; dc === 0)) {
+        return state;
+    }
+    const target = getPieceAt(state, targetPosition);
+    if (target === null || target.owner === fighter.owner) {
+        return state;
+    }
+
+    const mainRecord = {
+        kind: "capture",
+        from: fighterPosition,
+        to: targetPosition,
+        piece: fighter,
+        captured: target
+    };
+
+    const passengerLost = target.type === "tanker"
+        &amp;&amp; state.carrying[target.owner] !== null;
+    const lostPassenger = passengerLost ? state.carrying[target.owner] : null;
+    const extraRecords = passengerLost
+        ? [{
+            kind: "capture",
+            from: targetPosition,
+            to: targetPosition,
+            piece: fighter,
+            captured: lostPassenger
+        }]
+        : [];
+
+    const newCarrying = passengerLost
+        ? { ...state.carrying, [target.owner]: null }
+        : state.carrying;
+
+    const newBoard = setPiece(state.board, targetPosition, null);
+    const gameEnded = target.type === "command";
+    const newStatus = gameEnded
+        ? (fighter.owner === 1 ? "player1Won" : "player2Won")
+        : state.status;
+
+    return {
+        ...state,
+        board: newBoard,
+        moveHistory: [...state.moveHistory, mainRecord, ...extraRecords],
+        currentPlayer: gameEnded
+            ? state.currentPlayer
+            : otherPlayer(state.currentPlayer),
+        carrying: newCarrying,
+        status: newStatus,
+        lastMovedBombers: { ...state.lastMovedBombers, [fighter.owner]: null }
+    };
+}
+
+/* =========================================================================
  *  EXPORTS
  * ========================================================================= */
 
@@ -756,7 +872,9 @@ export {
     getWinner,
     makeMove,
     deployPlane,
-    skipDeploy
+    skipDeploy,
+    getLockOnTargets,
+    lockOnAttack
 };</code></pre>
         </article>
     </section>
@@ -771,7 +889,7 @@ export {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Mon May 18 2026 13:17:14 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Mon Jun 08 2026 14:54:08 GMT+0100 (英国夏令时间) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
