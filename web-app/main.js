@@ -19,7 +19,7 @@ const PIECE_VALUES = {
 };
 
 /* =========================================================================
- *  MUTABLE UI / SESSION STATE
+ *  SESSION STATE
  * ========================================================================= */
 
 let gameState = Game.createInitialGame();
@@ -27,23 +27,21 @@ let selectedCell = null;
 let cursorPos = { row: 0, col: 0 };
 let inputMode = "mouse";
 
-// Session-level scores. Persist across multiple games within the same
-// page load; cleared only when the user refreshes.
+
 let sessionScores = { 1: 0, 2: 0 };
 
-// Player who lost the most recent finished game. Used as a tiebreaker
-// when both players have the same score.
+
 let lastLoser = null;
 
-// Turn timer state
+
 const TURN_TIME = 90;
 let timerInterval = null;
 let timeLeft = TURN_TIME;
 
-// BGM state
+
 let bgmEnabled = true;
 
-// Player display names — set once at session start via the name-entry modal
+
 let playerNames = { 1: "Player 1", 2: "Player 2" };
 
 /* =========================================================================
@@ -147,16 +145,16 @@ function init() {
         let dr = 0;
         let dc = 0;
         if (event.key === "w" || event.key === "W"
-                || event.key === "ArrowUp") {
+            || event.key === "ArrowUp") {
             dr = -1;
         } else if (event.key === "s" || event.key === "S"
-                || event.key === "ArrowDown") {
+            || event.key === "ArrowDown") {
             dr = 1;
         } else if (event.key === "a" || event.key === "A"
-                || event.key === "ArrowLeft") {
+            || event.key === "ArrowLeft") {
             dc = -1;
         } else if (event.key === "d" || event.key === "D"
-                || event.key === "ArrowRight") {
+            || event.key === "ArrowRight") {
             dc = 1;
         }
 
@@ -269,7 +267,7 @@ function activateCell(pos) {
         return;
     }
 
-    // Move succeeded — update scores from any new captures, then render
+    // Move succeeded: update scores from any new captures, then render
     updateScoresFromCaptures(previous, gameState);
 
     selectedCell = null;
@@ -314,14 +312,14 @@ function handleNewGame() {
 /**
  * Diff the move histories between two states. For every newly added
  * "capture" entry, credit the moving player the captured piece's
- * value. Handles double-captures (loaded tanker case) automatically.
+ * value. Handles double-captures  automatically.
  */
 function updateScoresFromCaptures(previousState, newState) {
     const oldHistory = Game.getMoveHistory(previousState);
     const newHistory = Game.getMoveHistory(newState);
     const newEntries = newHistory.slice(oldHistory.length);
 
-    // The capturer is whoever was on move BEFORE the action — read it
+    // The capturer is whoever was on move BEFORE the action: read it
     // from the previous state, since capturing the Command does not
     // pass the turn.
     const capturer = Game.getCurrentPlayer(previousState);
@@ -337,7 +335,7 @@ function updateScoresFromCaptures(previousState, newState) {
 /**
  * Decide which player should make the first move of the next game.
  * Rules, in order:
- *   1. Lower score starts (catch-up advantage).
+ *   1. Lower score starts.
  *   2. Tied? Use the loser of the previous game.
  *   3. Still no info (first ever game)? Default to Player 1.
  */
@@ -416,14 +414,13 @@ function initBGM() {
     }
     bgm.volume = 0.25;
 
-    // Attempt immediately — will be silently rejected if no user gesture yet.
-    bgm.play().catch(function () {});
+    // Attempt immediately: will be silently rejected if no user gesture yet.
+    bgm.play().catch(function () { });
 
-    // On every click (capture phase = fires before any handler),
-    // resume if the browser's autoplay policy had blocked or paused it.
+    // On every click 
     document.addEventListener("click", function () {
         if (bgmEnabled && bgm.paused) {
-            bgm.play().catch(function () {});
+            bgm.play().catch(function () { });
         }
     }, true);
 
@@ -437,7 +434,7 @@ function toggleBGM() {
     }
     bgmEnabled = !bgmEnabled;
     if (bgmEnabled) {
-        bgm.play().catch(function () {});
+        bgm.play().catch(function () { });
     } else {
         bgm.pause();
     }
@@ -464,7 +461,7 @@ function startTimer() {
     clearInterval(timerInterval);
     timeLeft = TURN_TIME;
 
-    // Snap bar to full instantly (bypass CSS transition)
+    // Snap bar to full instantly
     const fill = document.getElementById("timer-fill");
     if (fill) {
         fill.style.transition = "none";
@@ -688,8 +685,8 @@ function moveCursor(dr, dc) {
             : Math.abs(p.row - cur.row);
 
         if (primary < bestPrimary
-                || (primary === bestPrimary
-                    && secondary < bestSecondary)) {
+            || (primary === bestPrimary
+                && secondary < bestSecondary)) {
             bestPrimary = primary;
             bestSecondary = secondary;
             best = p;
@@ -769,8 +766,8 @@ function renderBoard(state) {
             cell.classList.add("cell-cooldown");
         }
         if (inputMode === "keyboard"
-                && validCursorCells.length > 0
-                && isSamePos(cursorPos, { row: row, col: col })) {
+            && validCursorCells.length > 0
+            && isSamePos(cursorPos, { row: row, col: col })) {
             cell.classList.add("cell-cursor");
         }
     });
@@ -832,7 +829,7 @@ function renderTankerStatus(state) {
 }
 
 /**
- * Render the session ranking board. Sorts players by score (descending)
+ * Render the session ranking board. Sorts players by score descend
  * so the leader appears first; highlights the leading row when there
  * is a clear winner.
  */
@@ -936,7 +933,7 @@ function renderGameOver(state) {
 }
 
 /* =========================================================================
- *  CAPTURE EFFECTS — explosion, sound, screen shake
+ *  CAPTURE EFFECTS
  * ========================================================================= */
 
 function getCaptureTarget(previousState, newState) {
