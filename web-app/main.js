@@ -324,7 +324,7 @@ function handleNewGame() {
 /**
  * Diff the move histories between two states. For every newly added
  * "capture" entry, credit the moving player the captured piece's
- * value. Handles double-captures  automatically.
+ * value. Handles double-captures.
  */
 function updateScoresFromCaptures(previousState, newState) {
     const oldHistory = Game.getMoveHistory(previousState);
@@ -348,8 +348,7 @@ function updateScoresFromCaptures(previousState, newState) {
  * Decide which player should make the first move of the next game.
  * Rules, in order:
  *   1. Lower score starts.
- *   2. Tied? Use the loser of the previous game.
- *   3. Still no info (first ever game)? Default to Player 1.
+ *   2. first game: Default to Player 1.
  */
 function determineNextStarter() {
     if (sessionScores[1] < sessionScores[2]) {
@@ -362,7 +361,7 @@ function determineNextStarter() {
 }
 
 /* =========================================================================
- *  RULES MODAL
+ *  RULES DISPLAY FUNC
  * ========================================================================= */
 
 function showRulesModal() {
@@ -380,7 +379,7 @@ function hideRulesModal() {
 }
 
 /* =========================================================================
- *  NAME ENTRY MODAL
+ *  NAME ENTRY FUNC
  * ========================================================================= */
 
 function showNameEntryModal() {
@@ -416,7 +415,7 @@ function updateStaticNameLabels() {
 }
 
 /* =========================================================================
- *  BACKGROUND MUSIC
+ *  BGM MUSIC FUNC
  * ========================================================================= */
 
 function initBGM() {
@@ -424,7 +423,7 @@ function initBGM() {
     if (!bgm) {
         return;
     }
-    bgm.volume = 0.25;
+    bgm.volume = 0.20;
 
     // Attempt immediately: will be silently rejected if no user gesture yet.
     bgm.play().catch(function () { });

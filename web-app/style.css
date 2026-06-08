@@ -1,5 +1,5 @@
 /* =========================================================================
- *  Aircraft Chess — styling.
+ *  Aircraft Chess tyle.css file.
  * ========================================================================= */
 
 @font-face {
@@ -133,7 +133,7 @@ header h1 {
     color: var(--accent);
 }
 
-/* ===== Two-column game layout ===== */
+/* ===== Basic page layout ===== */
 
 .game-layout {
     display: grid;
@@ -145,7 +145,7 @@ header h1 {
 }
 
 /* =========================================================================
- *  Rules modal — MISSION BRIEF aesthetic.
+ *  MISSION BRIEF aesthetic.
  * ========================================================================= */
 
 #rules-modal {
@@ -404,7 +404,7 @@ header h1 {
     filter: drop-shadow(0 0 4px rgba(255, 80, 80, 0.85));
 }
 
-/* ===== Highlights ===== */
+/* ===== Highlights-style ===== */
 
 .cell-selected {
     outline: 4px solid var(--highlight-selected);
@@ -475,7 +475,7 @@ header h1 {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* ===== Lock-on attack targets (red ring over enemy piece) ===== */
+/* ===== Lock-on attack targets :red ring over enemy piece ===== */
 
 .cell-lockon {
     box-shadow: inset 0 0 0 3px var(--highlight-lockon);
@@ -508,14 +508,14 @@ header h1 {
     }
 }
 
-/* ===== Keyboard cursor (WASD / arrow navigation) ===== */
+/* ===== Keyboard navigation (WSAD / arrow keys) ===== */
 
 .cell-cursor {
     box-shadow: inset 0 0 0 3px #ffe066;
     z-index: 2;
 }
 
-/* ===== Key-cap badges on buttons ===== */
+/* ===== Key-cap badges ===== */
 
 kbd.keycap {
     display: inline-block;
@@ -610,7 +610,7 @@ kbd.keycap {
     box-shadow: 0 0 6px #00e5ff, 0 0 12px rgba(0, 229, 255, 0.65);
 }
 
-/* ===== Rookie mode piece badges ===== */
+/* ===== Info display piece badges ===== */
 
 .piece-badge {
     position: absolute;
@@ -1032,7 +1032,7 @@ button:focus {
     animation: board-shake 0.45s ease-out;
 }
 
-/* ===== Ranking board (session-level scoring) ===== */
+/* ===== Ranking board ===== */
 
 .ranking-board {
     margin-top: 0.6rem;
@@ -1149,7 +1149,7 @@ button:focus {
     border-color: #ff5050;
 }
 
-/* ===== Turn timer — LCD digital display ===== */
+/* ===== Turn timer — LCD display ===== */
 
 .timer-display {
     margin: 0.55rem 0 0.4rem;
@@ -1172,7 +1172,7 @@ button:focus {
     overflow: hidden;
 }
 
-/* Scanline overlay for CRT/LCD feel */
+/* Radar Liked Scanning effect */
 .lcd-panel::after {
     content: "";
     position: absolute;
@@ -1202,7 +1202,7 @@ button:focus {
     display: block;
 }
 
-/* Dim "ghost" segments — always-lit LCD effect */
+/* Dim "ghost" segments */
 .lcd-ghost-digits {
     position: absolute;
     top: 0;
@@ -1250,7 +1250,7 @@ button:focus {
     transition: width 0.92s linear, background 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* ── Warning (≤ 30 s) ── */
+/* ── Warning for timer(≤ 30 s) ── */
 .timer-display.timer-warning .lcd-digits {
     color: #ffcc00;
     text-shadow: 0 0 5px #ffcc00, 0 0 12px rgba(255, 204, 0, 0.55);
@@ -1269,7 +1269,7 @@ button:focus {
     box-shadow: 0 0 6px rgba(255, 204, 0, 0.35);
 }
 
-/* ── Danger (≤ 10 s) ── */
+/* ── Danger for timer(≤ 10 s) ── */
 .timer-display.timer-danger .lcd-digits {
     color: #ff3333;
     text-shadow: 0 0 5px #ff3333, 0 0 12px rgba(255, 51, 51, 0.7);
@@ -1317,7 +1317,7 @@ button:focus {
     }
 }
 
-/* ===== Name-entry modal ===== */
+/* ===== Name-entry func ===== */
 
 #name-entry-modal {
     position: fixed;

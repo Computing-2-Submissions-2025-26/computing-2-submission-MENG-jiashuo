@@ -1,5 +1,5 @@
 /**
- * @fileoverview Aircraft Chess — game module.
+ * @fileoverview Aircraft Chess (logic module)
  *
  * A turn-based, board-based variant of chess played on an 8×8 grid,
  * where every piece is a military aircraft. Two players take alternating
@@ -728,8 +728,8 @@ function getLockOnTargets(state, fighterPosition) {
 }
 
 /**
- * Destroy the enemy piece at `targetPosition` using the Fighter at
- * `fighterPosition`. The Fighter stays in place; the target is removed.
+ * Destroy the enemy piece at `targetPosition`,
+ * the Fighter stays in place; the target is removed.
  * Returns the unchanged state if the action is illegal.
  * @param   {GameState} state
  * @param   {Position}  fighterPosition
