@@ -171,10 +171,14 @@ const TANKER_RANGE = 1;
  * @returns {GameState} A fresh game state ready to play.
  */
 function createInitialGame() {
-    const emptyRow = () => Array(8).fill(null);
-    const playerRow = (player) => BACK_ROW.map(
-        (type) => ({ type: type, owner: player })
-    );
+    function emptyRow() {
+        return new Array(8).fill(null);
+    }
+    function playerRow(player) {
+        return BACK_ROW.map(function (type) {
+            return {type: type, owner: player};
+        });
+    }
 
     const board = [
         playerRow(1),
@@ -190,8 +194,8 @@ function createInitialGame() {
     return {
         board: board,
         currentPlayer: 1,
-        carrying: { 1: null, 2: null },
-        lastMovedBombers: { 1: null, 2: null },
+        carrying: {"1": null, "2": null},
+        lastMovedBombers: {"1": null, "2": null},
         awaitingDeploy: false,
         moveHistory: [],
         status: "playing"
@@ -209,24 +213,38 @@ function isOnBoard(row, col) {
 
 /** @private */
 function otherPlayer(player) {
-    return player === 1 ? 2 : 1;
-}
-
-/** @private */
-function setPiece(board, position, piece) {
-    return board.map(
-        (row, r) => (r === position.row
-            ? row.map((cell, c) => (c === position.col ? piece : cell))
-            : row)
+    return (
+        player === 1
+        ? 2
+        : 1
     );
 }
 
 /** @private */
+function setPiece(board, position, piece) {
+    return board.map(function (row, r) {
+        if (r !== position.row) {
+            return row;
+        }
+        return row.map(function (cell, c) {
+            return (
+                c === position.col
+                ? piece
+                : cell
+            );
+        });
+    });
+}
+
+/** @private */
 function nextCooldownAfterMove(state, mover, to) {
-    return {
-        ...state.lastMovedBombers,
-        [mover.owner]: mover.type === "bomber" ? to : null
-    };
+    const result = Object.assign({}, state.lastMovedBombers);
+    result[mover.owner] = (
+        mover.type === "bomber"
+        ? to
+        : null
+    );
+    return result;
 }
 
 /** @private */
@@ -235,9 +253,7 @@ function isBomberOnCooldown(state, piece, pos) {
         return false;
     }
     const locked = state.lastMovedBombers[piece.owner];
-    return locked !== null
-        && locked.row === pos.row
-        && locked.col === pos.col;
+    return locked !== null && locked.row === pos.row && locked.col === pos.col;
 }
 
 /** @private */
@@ -252,9 +268,11 @@ function canStepOnto(state, mover, row, col) {
     if (target.owner !== mover.owner) {
         return true;
     }
-    return target.type === "tanker"
+    return (
+        target.type === "tanker"
         && state.carrying[mover.owner] === null
-        && BOARDABLE_TYPES.includes(mover.type);
+        && BOARDABLE_TYPES.includes(mover.type)
+    );
 }
 
 /** @private */
@@ -265,16 +283,22 @@ function slideInDirection(state, from, mover, dr, dc) {
         }
         const piece = state.board[row][col];
         if (piece === null) {
-            return step(row + dr, col + dc, acc.concat([{ row: row, col: col }]));
+            return step(
+                row + dr,
+                col + dc,
+                acc.concat([{row: row, col: col}])
+            );
         }
         if (piece.owner !== mover.owner) {
-            return acc.concat([{ row: row, col: col }]);
+            return acc.concat([{row: row, col: col}]);
         }
-        const canBoard = piece.type === "tanker"
+        const canBoard = (
+            piece.type === "tanker"
             && state.carrying[mover.owner] === null
-            && BOARDABLE_TYPES.includes(mover.type);
+            && BOARDABLE_TYPES.includes(mover.type)
+        );
         if (canBoard) {
-            return acc.concat([{ row: row, col: col }]);
+            return acc.concat([{row: row, col: col}]);
         }
         return acc;
     }
@@ -283,20 +307,27 @@ function slideInDirection(state, from, mover, dr, dc) {
 
 /** @private */
 function findTanker(state, player) {
-    const matches = state.board.flatMap(
-        (row, r) => row.map(
-            (piece, c) => (
+    const matches = state.board.flatMap(function (row, r) {
+        return row.map(function (piece, c) {
+            const isTarget = (
                 piece !== null
                 && piece.type === "tanker"
                 && piece.owner === player
-            )
-                ? { row: r, col: c }
+            );
+            return (
+                isTarget
+                ? {row: r, col: c}
                 : null
-        )
-    ).filter((cell) => cell !== null);
-    return matches.length === 0
+            );
+        });
+    }).filter(function (cell) {
+        return cell !== null;
+    });
+    return (
+        matches.length === 0
         ? null
-        : matches[0];
+        : matches[0]
+    );
 }
 
 /* =========================================================================
@@ -305,39 +336,45 @@ function findTanker(state, player) {
 
 /** @private */
 function fighterMoves(state, from, mover) {
-    return KNIGHT_OFFSETS
-        .map(([dr, dc]) => ({ row: from.row + dr, col: from.col + dc }))
-        .filter((pos) => canStepOnto(state, mover, pos.row, pos.col));
+    return KNIGHT_OFFSETS.map(function ([dr, dc]) {
+        return {row: from.row + dr, col: from.col + dc};
+    }).filter(function (pos) {
+        return canStepOnto(state, mover, pos.row, pos.col);
+    });
 }
 
 /** @private */
 function bomberMoves(state, from, mover) {
-    return ORTHOGONAL_DIRECTIONS.flatMap(
-        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc).slice(0, BOMBER_RANGE)
-    );
+    return ORTHOGONAL_DIRECTIONS.flatMap(function ([dr, dc]) {
+        const line = slideInDirection(state, from, mover, dr, dc);
+        return line.slice(0, BOMBER_RANGE);
+    });
 }
 
 /** @private */
 function reconMoves(state, from, mover) {
-    return DIAGONAL_DIRECTIONS.flatMap(
-        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc).slice(0, RECON_RANGE)
-    );
+    return DIAGONAL_DIRECTIONS.flatMap(function ([dr, dc]) {
+        const line = slideInDirection(state, from, mover, dr, dc);
+        return line.slice(0, RECON_RANGE);
+    });
 }
 
 /** @private */
 function tankerMoves(state, from, mover) {
-    return ALL_DIRECTIONS.flatMap(
-        ([dr, dc]) => slideInDirection(state, from, mover, dr, dc).slice(0, TANKER_RANGE)
-    );
+    return ALL_DIRECTIONS.flatMap(function ([dr, dc]) {
+        const line = slideInDirection(state, from, mover, dr, dc);
+        return line.slice(0, TANKER_RANGE);
+    });
 }
 
 /** @private */
 function commandMoves(state, from, mover) {
-    return ALL_DIRECTIONS
-        .map(([dr, dc]) => ({ row: from.row + dr, col: from.col + dc }))
-        .filter((pos) => canStepOnto(state, mover, pos.row, pos.col));
+    return ALL_DIRECTIONS.map(function ([dr, dc]) {
+        return {row: from.row + dr, col: from.col + dc};
+    }).filter(function (pos) {
+        return canStepOnto(state, mover, pos.row, pos.col);
+    });
 }
-
 const MOVE_GENERATORS = {
     fighter: fighterMoves,
     bomber: bomberMoves,
@@ -360,19 +397,21 @@ function applyRegularMove(state, from, to, mover) {
         piece: mover,
         captured: null
     };
-    const triggersDeploy = mover.type === "tanker"
-        && state.carrying[mover.owner] !== null;
-
-    return {
-        ...state,
-        board: newBoard,
-        moveHistory: [...state.moveHistory, record],
-        currentPlayer: triggersDeploy
-            ? state.currentPlayer
-            : otherPlayer(state.currentPlayer),
-        awaitingDeploy: triggersDeploy,
-        lastMovedBombers: nextCooldownAfterMove(state, mover, to)
-    };
+    const triggersDeploy = (
+        mover.type === "tanker"
+        && state.carrying[mover.owner] !== null
+    );
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    result.moveHistory = state.moveHistory.concat([record]);
+    result.currentPlayer = (
+        triggersDeploy
+        ? state.currentPlayer
+        : otherPlayer(state.currentPlayer)
+    );
+    result.awaitingDeploy = triggersDeploy;
+    result.lastMovedBombers = nextCooldownAfterMove(state, mover, to);
+    return result;
 }
 
 /** @private */
@@ -386,13 +425,21 @@ function applyCapture(state, from, to, mover, target) {
         captured: target
     };
 
-    const moverIsCarrying = mover.type === "tanker"
-        && state.carrying[mover.owner] !== null;
-    const passengerLost = target.type === "tanker"
-        && state.carrying[target.owner] !== null;
-    const lostPassenger = passengerLost ? state.carrying[target.owner] : null;
-
-    const extraRecords = passengerLost
+    const moverIsCarrying = (
+        mover.type === "tanker"
+        && state.carrying[mover.owner] !== null
+    );
+    const passengerLost = (
+        target.type === "tanker"
+        && state.carrying[target.owner] !== null
+    );
+    const lostPassenger = (
+        passengerLost
+        ? state.carrying[target.owner]
+        : null
+    );
+    const extraRecords = (
+        passengerLost
         ? [{
             kind: "capture",
             from: to,
@@ -400,31 +447,45 @@ function applyCapture(state, from, to, mover, target) {
             piece: mover,
             captured: lostPassenger
         }]
-        : [];
+        : []
+    );
 
     const gameEnded = target.type === "command";
-    const newStatus = gameEnded
-        ? (mover.owner === 1 ? "player1Won" : "player2Won")
-        : state.status;
+    const winStatus = (
+        mover.owner === 1
+        ? "player1Won"
+        : "player2Won"
+    );
+    const newStatus = (
+        gameEnded
+        ? winStatus
+        : state.status
+    );
 
     const triggersDeploy = moverIsCarrying && !gameEnded;
 
-    const newCarrying = passengerLost
-        ? { ...state.carrying, [target.owner]: null }
-        : state.carrying;
-
-    return {
-        ...state,
-        board: newBoard,
-        moveHistory: [...state.moveHistory, mainRecord, ...extraRecords],
-        currentPlayer: (gameEnded || triggersDeploy)
-            ? state.currentPlayer
-            : otherPlayer(state.currentPlayer),
-        carrying: newCarrying,
-        awaitingDeploy: triggersDeploy,
-        status: newStatus,
-        lastMovedBombers: nextCooldownAfterMove(state, mover, to)
-    };
+    const carryingWithDrop = Object.assign({}, state.carrying);
+    carryingWithDrop[target.owner] = null;
+    const newCarrying = (
+        passengerLost
+        ? carryingWithDrop
+        : state.carrying
+    );
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    result.moveHistory = (
+        state.moveHistory.concat([mainRecord]).concat(extraRecords)
+    );
+    result.currentPlayer = (
+        (gameEnded || triggersDeploy)
+        ? state.currentPlayer
+        : otherPlayer(state.currentPlayer)
+    );
+    result.carrying = newCarrying;
+    result.awaitingDeploy = triggersDeploy;
+    result.status = newStatus;
+    result.lastMovedBombers = nextCooldownAfterMove(state, mover, to);
+    return result;
 }
 
 /** @private */
@@ -438,15 +499,18 @@ function applyBoard(state, from, to, mover) {
         captured: null
     };
 
-    return {
-        ...state,
-        board: newBoard,
-        carrying: { ...state.carrying, [mover.owner]: mover },
-        moveHistory: [...state.moveHistory, record],
-        currentPlayer: otherPlayer(state.currentPlayer),
-        awaitingDeploy: false,
-        lastMovedBombers: { ...state.lastMovedBombers, [mover.owner]: null }
-    };
+    const newCarrying = Object.assign({}, state.carrying);
+    newCarrying[mover.owner] = mover;
+    const newCooldown = Object.assign({}, state.lastMovedBombers);
+    newCooldown[mover.owner] = null;
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    result.carrying = newCarrying;
+    result.moveHistory = state.moveHistory.concat([record]);
+    result.currentPlayer = otherPlayer(state.currentPlayer);
+    result.awaitingDeploy = false;
+    result.lastMovedBombers = newCooldown;
+    return result;
 }
 
 /* =========================================================================
@@ -470,7 +534,7 @@ function getCurrentPlayer(state) {
  * @returns {Piece|null}
  */
 function getPieceAt(state, position) {
-    const { row, col } = position;
+    const {row, col} = position;
     if (!isOnBoard(row, col)) {
         return null;
     }
@@ -526,9 +590,7 @@ function getCooldownBomber(state, player) {
         return null;
     }
     const piece = state.board[pos.row][pos.col];
-    if (piece === null
-        || piece.type !== "bomber"
-        || piece.owner !== player) {
+    if (piece === null || piece.type !== "bomber" || piece.owner !== player) {
         return null;
     }
     return pos;
@@ -556,13 +618,16 @@ function getDeployTargets(state) {
     if (tankerPos === null) {
         return [];
     }
-    return ALL_DIRECTIONS
-        .map(([dr, dc]) => ({
+    return ALL_DIRECTIONS.map(function ([dr, dc]) {
+        return {
             row: tankerPos.row + dr,
             col: tankerPos.col + dc
-        }))
-        .filter((pos) => isOnBoard(pos.row, pos.col))
-        .filter((pos) => state.board[pos.row][pos.col] === null);
+        };
+    }).filter(function (pos) {
+        return isOnBoard(pos.row, pos.col);
+    }).filter(function (pos) {
+        return state.board[pos.row][pos.col] === null;
+    });
 }
 
 /**
@@ -572,10 +637,11 @@ function getDeployTargets(state) {
  * @returns {Array<Piece>}
  */
 function getCapturedPieces(state, player) {
-    return state.moveHistory
-        .filter((move) => move.captured !== null
-            && move.captured.owner === player)
-        .map((move) => move.captured);
+    return state.moveHistory.filter(function (move) {
+        return move.captured !== null && move.captured.owner === player;
+    }).map(function (move) {
+        return move.captured;
+    });
 }
 
 /**
@@ -618,9 +684,9 @@ function getWinner(state) {
  * @returns {GameState}
  */
 function makeMove(state, from, to) {
-    const isLegal = getLegalMoves(state, from).some(
-        (pos) => pos.row === to.row && pos.col === to.col
-    );
+    const isLegal = getLegalMoves(state, from).some(function (pos) {
+        return pos.row === to.row && pos.col === to.col;
+    });
     if (!isLegal) {
         return state;
     }
@@ -647,9 +713,9 @@ function deployPlane(state, deployTo) {
     if (!state.awaitingDeploy) {
         return state;
     }
-    const isValid = getDeployTargets(state).some(
-        (pos) => pos.row === deployTo.row && pos.col === deployTo.col
-    );
+    const isValid = getDeployTargets(state).some(function (pos) {
+        return pos.row === deployTo.row && pos.col === deployTo.col;
+    });
     if (!isValid) {
         return state;
     }
@@ -665,14 +731,15 @@ function deployPlane(state, deployTo) {
         captured: null
     };
 
-    return {
-        ...state,
-        board: newBoard,
-        carrying: { ...state.carrying, [state.currentPlayer]: null },
-        moveHistory: [...state.moveHistory, record],
-        currentPlayer: otherPlayer(state.currentPlayer),
-        awaitingDeploy: false
-    };
+    const newCarrying = Object.assign({}, state.carrying);
+    newCarrying[state.currentPlayer] = null;
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    result.carrying = newCarrying;
+    result.moveHistory = state.moveHistory.concat([record]);
+    result.currentPlayer = otherPlayer(state.currentPlayer);
+    result.awaitingDeploy = false;
+    return result;
 }
 
 /**
@@ -684,13 +751,11 @@ function skipDeploy(state) {
     if (!state.awaitingDeploy) {
         return state;
     }
-    return {
-        ...state,
-        currentPlayer: otherPlayer(state.currentPlayer),
-        awaitingDeploy: false
-    };
+    const result = Object.assign({}, state);
+    result.currentPlayer = otherPlayer(state.currentPlayer);
+    result.awaitingDeploy = false;
+    return result;
 }
-
 /* =========================================================================
  *  LOCK-ON ATTACK
  * ========================================================================= */
@@ -710,21 +775,26 @@ function getLockOnTargets(state, fighterPosition) {
         return [];
     }
     const fighter = getPieceAt(state, fighterPosition);
-    if (fighter === null
-        || fighter.type !== "fighter"
-        || fighter.owner !== state.currentPlayer) {
+    if (fighter === null) {
         return [];
     }
-    return ALL_DIRECTIONS
-        .map(([dr, dc]) => ({
+    if (fighter.type !== "fighter") {
+        return [];
+    }
+    if (fighter.owner !== state.currentPlayer) {
+        return [];
+    }
+    return ALL_DIRECTIONS.map(function ([dr, dc]) {
+        return {
             row: fighterPosition.row + dr,
             col: fighterPosition.col + dc
-        }))
-        .filter((pos) => isOnBoard(pos.row, pos.col))
-        .filter(function (pos) {
-            const target = state.board[pos.row][pos.col];
-            return target !== null && target.owner !== fighter.owner;
-        });
+        };
+    }).filter(function (pos) {
+        return isOnBoard(pos.row, pos.col);
+    }).filter(function (pos) {
+        const target = state.board[pos.row][pos.col];
+        return target !== null && target.owner !== fighter.owner;
+    });
 }
 
 /**
@@ -744,17 +814,28 @@ function lockOnAttack(state, fighterPosition, targetPosition) {
         return state;
     }
     const fighter = getPieceAt(state, fighterPosition);
-    if (fighter === null
-        || fighter.type !== "fighter"
-        || fighter.owner !== state.currentPlayer) {
+    if (fighter === null) {
         return state;
     }
+    if (fighter.type !== "fighter") {
+        return state;
+    }
+    if (fighter.owner !== state.currentPlayer) {
+        return state;
+    }
+
     const dr = targetPosition.row - fighterPosition.row;
     const dc = targetPosition.col - fighterPosition.col;
-    if (!isOnBoard(targetPosition.row, targetPosition.col)
-        || Math.abs(dr) > 1
-        || Math.abs(dc) > 1
-        || (dr === 0 && dc === 0)) {
+    if (!isOnBoard(targetPosition.row, targetPosition.col)) {
+        return state;
+    }
+    if (Math.abs(dr) > 1) {
+        return state;
+    }
+    if (Math.abs(dc) > 1) {
+        return state;
+    }
+    if (dr === 0 && dc === 0) {
         return state;
     }
     const target = getPieceAt(state, targetPosition);
@@ -769,11 +850,17 @@ function lockOnAttack(state, fighterPosition, targetPosition) {
         piece: fighter,
         captured: target
     };
-
-    const passengerLost = target.type === "tanker"
-        && state.carrying[target.owner] !== null;
-    const lostPassenger = passengerLost ? state.carrying[target.owner] : null;
-    const extraRecords = passengerLost
+    const passengerLost = (
+        target.type === "tanker"
+        && state.carrying[target.owner] !== null
+    );
+    const lostPassenger = (
+        passengerLost
+        ? state.carrying[target.owner]
+        : null
+    );
+    const extraRecords = (
+        passengerLost
         ? [{
             kind: "capture",
             from: targetPosition,
@@ -781,51 +868,68 @@ function lockOnAttack(state, fighterPosition, targetPosition) {
             piece: fighter,
             captured: lostPassenger
         }]
-        : [];
+        : []
+    );
 
-    const newCarrying = passengerLost
-        ? { ...state.carrying, [target.owner]: null }
-        : state.carrying;
+    const carryingWithDrop = Object.assign({}, state.carrying);
+    carryingWithDrop[target.owner] = null;
+    const newCarrying = (
+        passengerLost
+        ? carryingWithDrop
+        : state.carrying
+    );
 
     const newBoard = setPiece(state.board, targetPosition, null);
     const gameEnded = target.type === "command";
-    const newStatus = gameEnded
-        ? (fighter.owner === 1 ? "player1Won" : "player2Won")
-        : state.status;
+    const winStatus = (
+        fighter.owner === 1
+        ? "player1Won"
+        : "player2Won"
+    );
+    const newStatus = (
+        gameEnded
+        ? winStatus
+        : state.status
+    );
 
-    return {
-        ...state,
-        board: newBoard,
-        moveHistory: [...state.moveHistory, mainRecord, ...extraRecords],
-        currentPlayer: gameEnded
-            ? state.currentPlayer
-            : otherPlayer(state.currentPlayer),
-        carrying: newCarrying,
-        status: newStatus,
-        lastMovedBombers: { ...state.lastMovedBombers, [fighter.owner]: null }
-    };
+    const newCooldown = Object.assign({}, state.lastMovedBombers);
+    newCooldown[fighter.owner] = null;
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    const withMain = state.moveHistory.concat([mainRecord]);
+    result.moveHistory = withMain.concat(extraRecords);
+    result.currentPlayer = (
+        gameEnded
+        ? state.currentPlayer
+        : otherPlayer(state.currentPlayer)
+    );
+    result.carrying = newCarrying;
+    result.status = newStatus;
+    result.lastMovedBombers = newCooldown;
+    return result;
 }
 
 /* =========================================================================
  *  EXPORTS
  * ========================================================================= */
-
-export {
-    createInitialGame,
-    getCurrentPlayer,
-    getPieceAt,
-    getLegalMoves,
-    getCarriedPlane,
-    getCooldownBomber,
-    canDeploy,
-    getDeployTargets,
-    getCapturedPieces,
-    getMoveHistory,
-    isGameOver,
-    getWinner,
-    makeMove,
-    deployPlane,
-    skipDeploy,
-    getLockOnTargets,
-    lockOnAttack
+const Game = {
+    createInitialGame: createInitialGame,
+    getCurrentPlayer: getCurrentPlayer,
+    getPieceAt: getPieceAt,
+    getLegalMoves: getLegalMoves,
+    getCarriedPlane: getCarriedPlane,
+    getCooldownBomber: getCooldownBomber,
+    canDeploy: canDeploy,
+    getDeployTargets: getDeployTargets,
+    getCapturedPieces: getCapturedPieces,
+    getMoveHistory: getMoveHistory,
+    isGameOver: isGameOver,
+    getWinner: getWinner,
+    makeMove: makeMove,
+    deployPlane: deployPlane,
+    skipDeploy: skipDeploy,
+    getLockOnTargets: getLockOnTargets,
+    lockOnAttack: lockOnAttack
 };
+
+export default Object.freeze(Game);

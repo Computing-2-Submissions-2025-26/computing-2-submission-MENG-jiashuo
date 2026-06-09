@@ -3,7 +3,8 @@
  * @author Jiashuo Meng
  */
 
-import * as Game from "./game.js";
+import Game from "./game.js";
+
 
 /* =========================================================================
  *  SCORING CONFIG
@@ -27,23 +28,14 @@ let selectedCell = null;
 let cursorPos = { row: 0, col: 0 };
 let inputMode = "mouse";
 let rookieMode = false;
-
-
-let sessionScores = { 1: 0, 2: 0 };
-
-
+let sessionScores = { "1": 0, "2": 0 };
 let lastLoser = null;
-
+let timerInterval = null;
+let timeLeft = 90;
+let bgmEnabled = true;
+let playerNames = { "1": "Player 1", "2": "Player 2" };
 
 const TURN_TIME = 90;
-let timerInterval = null;
-let timeLeft = TURN_TIME;
-
-
-let bgmEnabled = true;
-
-
-let playerNames = { 1: "Player 1", 2: "Player 2" };
 
 /* =========================================================================
  *  INITIALISATION
@@ -52,8 +44,8 @@ let playerNames = { 1: "Player 1", 2: "Player 2" };
 function init() {
     const board = document.getElementById("board");
 
-    for (let r = 0; r < 8; r += 1) {
-        for (let c = 0; c < 8; c += 1) {
+    Array.from({ length: 8 }).forEach(function (ignoreRow, r) {
+        Array.from({ length: 8 }).forEach(function (ignoreCol, c) {
             const cell = document.createElement("button");
             cell.type = "button";
             cell.className = "cell";
@@ -63,8 +55,8 @@ function init() {
                 handleCellClick({ row: r, col: c });
             });
             board.appendChild(cell);
-        }
-    }
+        });
+    });
 
     document.getElementById("skip-deploy")
         .addEventListener("click", handleSkipDeploy);
@@ -84,13 +76,18 @@ function init() {
     updateRookieToggle();
     document.getElementById("confirm-names")
         .addEventListener("click", handleNameEntry);
+
     const inp1 = document.getElementById("name-p1");
     inp1.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") { document.getElementById("name-p2").focus(); }
+        if (e.key === "Enter") {
+            document.getElementById("name-p2").focus();
+        }
     });
     const inp2 = document.getElementById("name-p2");
     inp2.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") { handleNameEntry(); }
+        if (e.key === "Enter") {
+            handleNameEntry();
+        }
     });
     [inp1, inp2].forEach(function (input) {
         input.addEventListener("focus", function () {
@@ -108,95 +105,106 @@ function init() {
         }
     });
 
-    document.addEventListener("keydown", function (event) {
-        if (event.target.tagName === "INPUT") {
-            return;
-        }
-
-        inputMode = "keyboard";
-
-        const rulesModal = document.getElementById("rules-modal");
-        const nameModal = document.getElementById("name-entry-modal");
-        const rulesOpen = !rulesModal.hasAttribute("hidden");
-        const nameOpen = !nameModal.hasAttribute("hidden");
-
-        if (event.key === "Escape") {
-            if (rulesOpen) {
-                hideRulesModal();
-            } else if (!nameOpen) {
-                selectedCell = null;
-                render(gameState);
-            }
-            return;
-        }
-
-        if (rulesOpen || nameOpen) {
-            return;
-        }
-
-        if (event.key === "r" || event.key === "R") {
-            event.preventDefault();
-            showRulesModal();
-            return;
-        }
-
-        if (event.key === "v" || event.key === "V") {
-            event.preventDefault();
-            handleNewGame();
-            return;
-        }
-
-        if (event.key === "e" || event.key === "E") {
-            event.preventDefault();
-            if (Game.canDeploy(gameState)) {
-                handleSkipDeploy();
-            }
-            return;
-        }
-
-        let dr = 0;
-        let dc = 0;
-        if (event.key === "w" || event.key === "W"
-            || event.key === "ArrowUp") {
-            dr = -1;
-        } else if (event.key === "s" || event.key === "S"
-            || event.key === "ArrowDown") {
-            dr = 1;
-        } else if (event.key === "a" || event.key === "A"
-            || event.key === "ArrowLeft") {
-            dc = -1;
-        } else if (event.key === "d" || event.key === "D"
-            || event.key === "ArrowRight") {
-            dc = 1;
-        }
-
-        if (dr !== 0 || dc !== 0) {
-            event.preventDefault();
-            moveCursor(dr, dc);
-            const sel = "[data-row=\"" + cursorPos.row
-                + "\"][data-col=\"" + cursorPos.col + "\"]";
-            const target = document.querySelector(".cell" + sel);
-            if (target) {
-                target.focus({ preventScroll: true });
-            }
-            render(gameState);
-            return;
-        }
-
-        if (event.key === "Enter") {
-            const focused = document.activeElement;
-            if (focused && focused.classList.contains("cell")) {
-                return;
-            }
-            event.preventDefault();
-            activateCell(cursorPos);
-        }
-    });
+    document.addEventListener("keydown", handleKeyDown);
 
     initBGM();
     render(gameState);
 
     showNameEntryModal();
+}
+
+/* =========================================================================
+ *  KEYBOARD HANDLING
+ * ========================================================================= */
+
+function handleArrowKey(event) {
+    let dr = 0;
+    let dc = 0;
+    const key = event.key;
+    if (key === "w" || key === "W" || key === "ArrowUp") {
+        dr = -1;
+    } else if (key === "s" || key === "S" || key === "ArrowDown") {
+        dr = 1;
+    } else if (key === "a" || key === "A" || key === "ArrowLeft") {
+        dc = -1;
+    } else if (key === "d" || key === "D" || key === "ArrowRight") {
+        dc = 1;
+    }
+
+    if (dr === 0 && dc === 0) {
+        return false;
+    }
+
+    event.preventDefault();
+    moveCursor(dr, dc);
+    const sel = "[data-row=\"" + cursorPos.row
+        + "\"][data-col=\"" + cursorPos.col + "\"]";
+    const target = document.querySelector(".cell" + sel);
+    if (target) {
+        target.focus({ preventScroll: true });
+    }
+    render(gameState);
+    return true;
+}
+
+function handleKeyDown(event) {
+    if (event.target.tagName === "INPUT") {
+        return;
+    }
+
+    inputMode = "keyboard";
+
+    const rulesModal = document.getElementById("rules-modal");
+    const nameModal = document.getElementById("name-entry-modal");
+    const rulesOpen = !rulesModal.hasAttribute("hidden");
+    const nameOpen = !nameModal.hasAttribute("hidden");
+
+    if (event.key === "Escape") {
+        if (rulesOpen) {
+            hideRulesModal();
+        } else if (!nameOpen) {
+            selectedCell = null;
+            render(gameState);
+        }
+        return;
+    }
+
+    if (rulesOpen || nameOpen) {
+        return;
+    }
+
+    if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        showRulesModal();
+        return;
+    }
+
+    if (event.key === "v" || event.key === "V") {
+        event.preventDefault();
+        handleNewGame();
+        return;
+    }
+
+    if (event.key === "e" || event.key === "E") {
+        event.preventDefault();
+        if (Game.canDeploy(gameState)) {
+            handleSkipDeploy();
+        }
+        return;
+    }
+
+    if (handleArrowKey(event)) {
+        return;
+    }
+
+    if (event.key === "Enter") {
+        const focused = document.activeElement;
+        if (focused && focused.classList.contains("cell")) {
+            return;
+        }
+        event.preventDefault();
+        activateCell(cursorPos);
+    }
 }
 
 /* =========================================================================
@@ -207,70 +215,77 @@ function handleCellClick(pos) {
     activateCell(pos);
 }
 
-function activateCell(pos) {
+function recordGameEndOrContinue() {
     if (Game.isGameOver(gameState)) {
-        return;
+        lastLoser = (
+            Game.getWinner(gameState) === 1
+            ? 2
+            : 1
+        );
+        stopTimer();
+    } else {
+        startTimer();
     }
+}
 
-    if (Game.canDeploy(gameState)) {
-        const prevDeploy = gameState;
-        gameState = Game.deployPlane(gameState, pos);
-        if (gameState !== prevDeploy) {
-            selectedCell = null;
-            render(gameState);
-            if (Game.isGameOver(gameState)) {
-                lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
-                stopTimer();
-            } else {
-                startTimer();
-            }
-        }
-        return;
+function applyCaptureEffects(previousState) {
+    const capturedAt = getCaptureTarget(previousState, gameState);
+    render(gameState);
+    if (capturedAt !== null) {
+        triggerExplosion(capturedAt);
+        playBoomSound();
+        shakeBoard();
     }
+}
 
-    if (selectedCell === null) {
-        const piece = Game.getPieceAt(gameState, pos);
-        const cp = Game.getCurrentPlayer(gameState);
-        if (piece !== null && piece.owner === cp) {
-            selectedCell = pos;
-            render(gameState);
-        }
-        return;
+function tryDeployPhase(pos) {
+    const prevDeploy = gameState;
+    gameState = Game.deployPlane(gameState, pos);
+    if (gameState !== prevDeploy) {
+        selectedCell = null;
+        render(gameState);
+        recordGameEndOrContinue();
     }
+}
 
-    // Lock-on attack: Fighter destroys an adjacent enemy in place
+function trySelectPiece(pos) {
+    const piece = Game.getPieceAt(gameState, pos);
+    const owner = Game.getCurrentPlayer(gameState);
+    if (piece !== null && piece.owner === owner) {
+        selectedCell = pos;
+        render(gameState);
+    }
+}
+
+function tryLockOn(pos) {
     const selPiece = Game.getPieceAt(gameState, selectedCell);
-    if (selPiece !== null && selPiece.type === "fighter") {
-        const lockOns = Game.getLockOnTargets(gameState, selectedCell);
-        if (lockOns.some((t) => t.row === pos.row && t.col === pos.col)) {
-            const previous = gameState;
-            gameState = Game.lockOnAttack(gameState, selectedCell, pos);
-            updateScoresFromCaptures(previous, gameState);
-            selectedCell = null;
-            const capturedAt = getCaptureTarget(previous, gameState);
-            render(gameState);
-            if (capturedAt !== null) {
-                triggerExplosion(capturedAt);
-                playBoomSound();
-                shakeBoard();
-            }
-            if (Game.isGameOver(gameState)) {
-                lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
-                stopTimer();
-            } else {
-                startTimer();
-            }
-            return;
-        }
+    if (selPiece === null || selPiece.type !== "fighter") {
+        return false;
     }
+    const lockOns = Game.getLockOnTargets(gameState, selectedCell);
+    const isTarget = lockOns.some(function (t) {
+        return t.row === pos.row && t.col === pos.col;
+    });
+    if (!isTarget) {
+        return false;
+    }
+    const previousState = gameState;
+    gameState = Game.lockOnAttack(gameState, selectedCell, pos);
+    updateScoresFromCaptures(previousState, gameState);
+    selectedCell = null;
+    applyCaptureEffects(previousState);
+    recordGameEndOrContinue();
+    return true;
+}
 
-    const previous = gameState;
+function tryRegularMove(pos) {
+    const previousState = gameState;
     gameState = Game.makeMove(gameState, selectedCell, pos);
 
-    if (gameState === previous) {
+    if (gameState === previousState) {
         const piece = Game.getPieceAt(gameState, pos);
-        const cp = Game.getCurrentPlayer(gameState);
-        if (piece !== null && piece.owner === cp) {
+        const owner = Game.getCurrentPlayer(gameState);
+        if (piece !== null && piece.owner === owner) {
             selectedCell = pos;
         } else {
             selectedCell = null;
@@ -279,24 +294,32 @@ function activateCell(pos) {
         return;
     }
 
-    // Move succeeded: update scores from any new captures, then render
-    updateScoresFromCaptures(previous, gameState);
-
+    updateScoresFromCaptures(previousState, gameState);
     selectedCell = null;
-    const capturedAt = getCaptureTarget(previous, gameState);
-    render(gameState);
-    if (capturedAt !== null) {
-        triggerExplosion(capturedAt);
-        playBoomSound();
-        shakeBoard();
+    applyCaptureEffects(previousState);
+    recordGameEndOrContinue();
+}
+
+function activateCell(pos) {
+    if (Game.isGameOver(gameState)) {
+        return;
     }
 
-    if (Game.isGameOver(gameState)) {
-        lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
-        stopTimer();
-    } else {
-        startTimer();
+    if (Game.canDeploy(gameState)) {
+        tryDeployPhase(pos);
+        return;
     }
+
+    if (selectedCell === null) {
+        trySelectPiece(pos);
+        return;
+    }
+
+    if (tryLockOn(pos)) {
+        return;
+    }
+
+    tryRegularMove(pos);
 }
 
 function handleSkipDeploy() {
@@ -311,7 +334,9 @@ function handleSkipDeploy() {
 function handleNewGame() {
     const initial = Game.createInitialGame();
     const starter = determineNextStarter();
-    gameState = { ...initial, currentPlayer: starter };
+    const fresh = Object.assign({}, initial);
+    fresh.currentPlayer = starter;
+    gameState = fresh;
     selectedCell = null;
     render(gameState);
     startTimer();
@@ -336,12 +361,12 @@ function updateScoresFromCaptures(previousState, newState) {
     // pass the turn.
     const capturer = Game.getCurrentPlayer(previousState);
 
-    newEntries
-        .filter((entry) => entry.kind === "capture")
-        .forEach(function (entry) {
-            const value = PIECE_VALUES[entry.captured.type] || 0;
-            sessionScores[capturer] += value;
-        });
+    newEntries.filter(function (entry) {
+        return entry.kind === "capture";
+    }).forEach(function (entry) {
+        const value = PIECE_VALUES[entry.captured.type] || 0;
+        sessionScores[capturer] += value;
+    });
 }
 
 /**
@@ -357,7 +382,11 @@ function determineNextStarter() {
     if (sessionScores[2] < sessionScores[1]) {
         return 2;
     }
-    return lastLoser !== null ? lastLoser : 1;
+    return (
+        lastLoser !== null
+        ? lastLoser
+        : 1
+    );
 }
 
 /* =========================================================================
@@ -425,13 +454,15 @@ function initBGM() {
     }
     bgm.volume = 0.20;
 
-    // Attempt immediately: will be silently rejected if no user gesture yet.
-    bgm.play().catch(function () { });
-
-    // On every click 
+    // Attempt immediately: will be silently rejected if no gesture yet.
+    bgm.play().catch(function () {
+        return;
+    });
     document.addEventListener("click", function () {
         if (bgmEnabled && bgm.paused) {
-            bgm.play().catch(function () { });
+            bgm.play().catch(function () {
+                return;
+            });
         }
     }, true);
 
@@ -445,7 +476,9 @@ function toggleBGM() {
     }
     bgmEnabled = !bgmEnabled;
     if (bgmEnabled) {
-        bgm.play().catch(function () { });
+        bgm.play().catch(function () {
+            return;
+        });
     } else {
         bgm.pause();
     }
@@ -457,9 +490,18 @@ function updateBGMButton() {
     if (!btn) {
         return;
     }
-    btn.textContent = bgmEnabled ? "🔊" : "🔇";
+    btn.textContent = (
+        bgmEnabled
+        ? "🔊"
+        : "🔇"
+    );
     btn.setAttribute(
-        "aria-label", bgmEnabled ? "Mute music" : "Unmute music"
+        "aria-label",
+        (
+            bgmEnabled
+            ? "Mute music"
+            : "Unmute music"
+        )
     );
     btn.classList.toggle("bgm-muted", !bgmEnabled);
 }
@@ -540,6 +582,38 @@ function updateTimerDisplay() {
     }
 }
 
+function collectCandidates(currentPlayer) {
+    const candidates = [];
+    gameState.board.forEach(function (boardRow, r) {
+        boardRow.forEach(function (ignoreCell, c) {
+            const here = { row: r, col: c };
+            const piece = Game.getPieceAt(gameState, here);
+            if (piece !== null && piece.owner === currentPlayer) {
+                const moves = Game.getLegalMoves(gameState, here);
+                if (moves.length > 0) {
+                    candidates.push({ from: here, moves: moves });
+                }
+            }
+        });
+    });
+    return candidates;
+}
+
+function executeRandomDeploy() {
+    const targets = Game.getDeployTargets(gameState);
+    if (targets.length > 0 && Math.random() > 0.3) {
+        const index = Math.floor(Math.random() * targets.length);
+        gameState = Game.deployPlane(gameState, targets[index]);
+    } else {
+        gameState = Game.skipDeploy(gameState);
+    }
+    selectedCell = null;
+    render(gameState);
+    if (!Game.isGameOver(gameState)) {
+        startTimer();
+    }
+}
+
 function executeRandomMove() {
     if (Game.isGameOver(gameState)) {
         return;
@@ -547,63 +621,37 @@ function executeRandomMove() {
 
     // Deploy phase: pick a random target or skip
     if (Game.canDeploy(gameState)) {
-        const targets = Game.getDeployTargets(gameState);
-        if (targets.length > 0 && Math.random() > 0.3) {
-            const t = targets[Math.floor(Math.random() * targets.length)];
-            gameState = Game.deployPlane(gameState, t);
-        } else {
-            gameState = Game.skipDeploy(gameState);
-        }
-        selectedCell = null;
-        render(gameState);
-        if (!Game.isGameOver(gameState)) {
-            startTimer();
-        }
+        executeRandomDeploy();
         return;
     }
 
     // Collect every piece of the current player that has a legal move
     const currentPlayer = Game.getCurrentPlayer(gameState);
-    const candidates = [];
-
-    for (let r = 0; r < 8; r += 1) {
-        for (let c = 0; c < 8; c += 1) {
-            const piece = Game.getPieceAt(gameState, { row: r, col: c });
-            if (piece !== null && piece.owner === currentPlayer) {
-                const moves = Game.getLegalMoves(
-                    gameState, { row: r, col: c }
-                );
-                if (moves.length > 0) {
-                    candidates.push({ from: { row: r, col: c }, moves });
-                }
-            }
-        }
-    }
+    const candidates = collectCandidates(currentPlayer);
 
     if (candidates.length === 0) {
         startTimer();
         return;
     }
 
-    const pick = candidates[Math.floor(Math.random() * candidates.length)];
-    const move = pick.moves[Math.floor(Math.random() * pick.moves.length)];
+    const pickIndex = Math.floor(Math.random() * candidates.length);
+    const pick = candidates[pickIndex];
+    const moveIndex = Math.floor(Math.random() * pick.moves.length);
+    const move = pick.moves[moveIndex];
 
-    const previous = gameState;
+    const previousState = gameState;
     gameState = Game.makeMove(gameState, pick.from, move);
-    updateScoresFromCaptures(previous, gameState);
+    updateScoresFromCaptures(previousState, gameState);
 
     selectedCell = null;
-    const capturedAt = getCaptureTarget(previous, gameState);
-    render(gameState);
-
-    if (capturedAt !== null) {
-        triggerExplosion(capturedAt);
-        playBoomSound();
-        shakeBoard();
-    }
+    applyCaptureEffects(previousState);
 
     if (Game.isGameOver(gameState)) {
-        lastLoser = Game.getWinner(gameState) === 1 ? 2 : 1;
+        lastLoser = (
+            Game.getWinner(gameState) === 1
+            ? 2
+            : 1
+        );
         stopTimer();
         return;
     }
@@ -634,6 +682,21 @@ function isSamePos(a, b) {
  *  SMART CURSOR HELPERS
  * ========================================================================= */
 
+function selectableCells(state) {
+    const owner = Game.getCurrentPlayer(state);
+    const cells = [];
+    state.board.forEach(function (boardRow, r) {
+        boardRow.forEach(function (ignoreCell, c) {
+            const here = { row: r, col: c };
+            const piece = Game.getPieceAt(state, here);
+            if (piece !== null && piece.owner === owner) {
+                cells.push(here);
+            }
+        });
+    });
+    return cells;
+}
+
 function getValidCursorCells(state) {
     if (Game.isGameOver(state)) {
         return [];
@@ -644,23 +707,14 @@ function getValidCursorCells(state) {
     if (selectedCell !== null) {
         const moves = Game.getLegalMoves(state, selectedCell);
         const lockOns = Game.getLockOnTargets(state, selectedCell);
-        return moves.concat(lockOns.filter(function (lo) {
+        const extraLockOns = lockOns.filter(function (lo) {
             return !moves.some(function (m) {
                 return m.row === lo.row && m.col === lo.col;
             });
-        }));
+        });
+        return moves.concat(extraLockOns);
     }
-    const cp = Game.getCurrentPlayer(state);
-    const cells = [];
-    for (let r = 0; r < 8; r += 1) {
-        for (let c = 0; c < 8; c += 1) {
-            const piece = Game.getPieceAt(state, { row: r, col: c });
-            if (piece !== null && piece.owner === cp) {
-                cells.push({ row: r, col: c });
-            }
-        }
-    }
-    return cells;
+    return selectableCells(state);
 }
 
 function snapCursor(state) {
@@ -671,20 +725,37 @@ function snapCursor(state) {
     const isValid = valid.some(function (p) {
         return p.row === cursorPos.row && p.col === cursorPos.col;
     });
-    if (!isValid) {
-        let nearest = valid[0];
-        let nearestDist = Infinity;
-        valid.forEach(function (p) {
-            const dr = p.row - cursorPos.row;
-            const dc = p.col - cursorPos.col;
-            const dist = dr * dr + dc * dc;
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearest = p;
-            }
-        });
-        cursorPos = nearest;
+    if (isValid) {
+        return;
     }
+    let nearest = valid[0];
+    let nearestDist = Infinity;
+    valid.forEach(function (p) {
+        const dr = p.row - cursorPos.row;
+        const dc = p.col - cursorPos.col;
+        const dist = dr * dr + dc * dc;
+        if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = p;
+        }
+    });
+    cursorPos = nearest;
+}
+
+function isBlockedDirection(p, cur, dr, dc) {
+    if (dr < 0 && p.row >= cur.row) {
+        return true;
+    }
+    if (dr > 0 && p.row <= cur.row) {
+        return true;
+    }
+    if (dc < 0 && p.col >= cur.col) {
+        return true;
+    }
+    if (dc > 0 && p.col <= cur.col) {
+        return true;
+    }
+    return false;
 }
 
 function moveCursor(dr, dc) {
@@ -698,21 +769,24 @@ function moveCursor(dr, dc) {
     let bestSecondary = Infinity;
 
     valid.forEach(function (p) {
-        if (dr < 0 && p.row >= cur.row) { return; }
-        if (dr > 0 && p.row <= cur.row) { return; }
-        if (dc < 0 && p.col >= cur.col) { return; }
-        if (dc > 0 && p.col <= cur.col) { return; }
-
-        const primary = dr !== 0
+        if (isBlockedDirection(p, cur, dr, dc)) {
+            return;
+        }
+        const primary = (
+            dr !== 0
             ? Math.abs(p.row - cur.row)
-            : Math.abs(p.col - cur.col);
-        const secondary = dr !== 0
+            : Math.abs(p.col - cur.col)
+        );
+        const secondary = (
+            dr !== 0
             ? Math.abs(p.col - cur.col)
-            : Math.abs(p.row - cur.row);
-
-        if (primary < bestPrimary
-            || (primary === bestPrimary
-                && secondary < bestSecondary)) {
+            : Math.abs(p.row - cur.row)
+        );
+        const isCloser = (
+            primary < bestPrimary
+            || (primary === bestPrimary && secondary < bestSecondary)
+        );
+        if (isCloser) {
             bestPrimary = primary;
             bestSecondary = secondary;
             best = p;
@@ -728,16 +802,80 @@ function pieceDescription(piece) {
     return playerNames[piece.owner] + " " + piece.type;
 }
 
+function renderPiece(cell, piece, row, col, isCooldownHere) {
+    const img = document.createElement("img");
+    img.src = "resource/p" + piece.owner + "_" + piece.type + ".png";
+    img.alt = "";
+    cell.appendChild(img);
+    cell.classList.add("cell-has-piece");
+    cell.classList.add("piece-p" + piece.owner);
+
+    if (rookieMode) {
+        const badge = document.createElement("span");
+        badge.className = "piece-badge piece-badge-p" + piece.owner;
+        badge.textContent = piece.type.charAt(0).toUpperCase();
+        badge.setAttribute("aria-hidden", "true");
+        cell.appendChild(badge);
+    }
+
+    const restingNote = (
+        isCooldownHere
+        ? " (resting, cannot move this turn)"
+        : ""
+    );
+    cell.setAttribute(
+        "aria-label",
+        pieceDescription(piece) + restingNote
+        + " at row " + (row + 1) + " column " + (col + 1)
+    );
+}
+
+function applyCellHighlights(cell, row, col, targets) {
+    if (isSamePos(selectedCell, { row: row, col: col })) {
+        cell.classList.add("cell-selected");
+    }
+    const matches = function (p) {
+        return p.row === row && p.col === col;
+    };
+    if (targets.legal.some(matches)) {
+        cell.classList.add("cell-legal");
+    }
+    if (targets.lockOn.some(matches)) {
+        cell.classList.add("cell-lockon");
+    }
+    if (targets.deploy.some(matches)) {
+        cell.classList.add("cell-deploy-target");
+    }
+    if (targets.cooldownHere) {
+        cell.classList.add("cell-cooldown");
+    }
+    const cursorActive = (
+        inputMode === "keyboard"
+        && targets.validCursor.length > 0
+        && isSamePos(cursorPos, { row: row, col: col })
+    );
+    if (cursorActive) {
+        cell.classList.add("cell-cursor");
+    }
+}
+
 function renderBoard(state) {
-    const legalTargets = (selectedCell !== null && !Game.canDeploy(state))
+    const hasSelection = selectedCell !== null && !Game.canDeploy(state);
+    const legalTargets = (
+        hasSelection
         ? Game.getLegalMoves(state, selectedCell)
-        : [];
-    const lockOnTargets = (selectedCell !== null && !Game.canDeploy(state))
+        : []
+    );
+    const lockOnTargets = (
+        hasSelection
         ? Game.getLockOnTargets(state, selectedCell)
-        : [];
-    const deployTargets = Game.canDeploy(state)
+        : []
+    );
+    const deployTargets = (
+        Game.canDeploy(state)
         ? Game.getDeployTargets(state)
-        : [];
+        : []
+    );
     const currentPlayer = Game.getCurrentPlayer(state);
     const cooldownPos = Game.getCooldownBomber(state, currentPlayer);
     const validCursorCells = getValidCursorCells(state);
@@ -745,71 +883,41 @@ function renderBoard(state) {
     document.querySelectorAll(".cell").forEach(function (cell) {
         const row = Number(cell.dataset.row);
         const col = Number(cell.dataset.col);
-        const piece = Game.getPieceAt(state, { row: row, col: col });
+        const here = { row: row, col: col };
+        const piece = Game.getPieceAt(state, here);
         const isLight = (row + col) % 2 === 0;
 
         cell.innerHTML = "";
-        cell.className = "cell " + (isLight ? "cell-light" : "cell-dark");
+        cell.className = "cell " + (
+            isLight
+            ? "cell-light"
+            : "cell-dark"
+        );
 
-        const isCooldownHere = isSamePos(cooldownPos, { row: row, col: col });
+        const isCooldownHere = isSamePos(cooldownPos, here);
 
         if (piece !== null) {
-            const img = document.createElement("img");
-            img.src = "resource/p" + piece.owner + "_" + piece.type + ".png";
-            img.alt = "";
-            cell.appendChild(img);
-            cell.classList.add("cell-has-piece");
-            cell.classList.add("piece-p" + piece.owner);
-
-            if (rookieMode) {
-                const badge = document.createElement("span");
-                badge.className = "piece-badge piece-badge-p" + piece.owner;
-                badge.textContent = piece.type.charAt(0).toUpperCase();
-                badge.setAttribute("aria-hidden", "true");
-                cell.appendChild(badge);
-            }
-
-            const restingNote = isCooldownHere
-                ? " (resting, cannot move this turn)"
-                : "";
-            cell.setAttribute(
-                "aria-label",
-                pieceDescription(piece) + restingNote
-                + " at row " + (row + 1) + " column " + (col + 1)
-            );
+            renderPiece(cell, piece, row, col, isCooldownHere);
         } else {
             cell.setAttribute(
                 "aria-label",
-                "Empty square at row " + (row + 1) + " column " + (col + 1)
+                "Empty square at row " + (row + 1)
+                + " column " + (col + 1)
             );
         }
 
-        if (isSamePos(selectedCell, { row: row, col: col })) {
-            cell.classList.add("cell-selected");
-        }
-        if (legalTargets.some((p) => p.row === row && p.col === col)) {
-            cell.classList.add("cell-legal");
-        }
-        if (lockOnTargets.some((p) => p.row === row && p.col === col)) {
-            cell.classList.add("cell-lockon");
-        }
-        if (deployTargets.some((p) => p.row === row && p.col === col)) {
-            cell.classList.add("cell-deploy-target");
-        }
-        if (isCooldownHere) {
-            cell.classList.add("cell-cooldown");
-        }
-        if (inputMode === "keyboard"
-            && validCursorCells.length > 0
-            && isSamePos(cursorPos, { row: row, col: col })) {
-            cell.classList.add("cell-cursor");
-        }
+        applyCellHighlights(cell, row, col, {
+            legal: legalTargets,
+            lockOn: lockOnTargets,
+            deploy: deployTargets,
+            cooldownHere: isCooldownHere,
+            validCursor: validCursorCells
+        });
     });
 }
 
 function renderStatus(state) {
     const currentPlayer = Game.getCurrentPlayer(state);
-
 
     document.getElementById("current-player").textContent =
         playerNames[currentPlayer];
@@ -823,7 +931,6 @@ function renderStatus(state) {
         .classList.toggle("is-active", currentPlayer === 1);
     document.getElementById("label-p2")
         .classList.toggle("is-active", currentPlayer === 2);
-
 
     const msg = document.getElementById("status-message");
 
@@ -878,7 +985,9 @@ function renderRanking() {
     const ranked = [
         { id: 1, score: sessionScores[1] },
         { id: 2, score: sessionScores[2] }
-    ].sort((a, b) => b.score - a.score);
+    ].sort(function (a, b) {
+        return b.score - a.score;
+    });
 
     const tied = ranked[0].score === ranked[1].score;
 
@@ -891,7 +1000,15 @@ function renderRanking() {
 
         const position = document.createElement("span");
         position.className = "rank-position";
-        position.textContent = tied ? "—" : (index === 0 ? "1st" : "2nd");
+        position.textContent = (
+            tied
+            ? "—"
+            : (
+                index === 0
+                ? "1st"
+                : "2nd"
+            )
+        );
 
         const name = document.createElement("span");
         name.className = "rank-name";
@@ -976,12 +1093,14 @@ function getCaptureTarget(previousState, newState) {
     if (newHistory.length <= oldHistory.length) {
         return null;
     }
-    for (let i = newHistory.length - 1; i >= oldHistory.length; i -= 1) {
-        if (newHistory[i].kind === "capture") {
-            return newHistory[i].to;
-        }
+    const added = newHistory.slice(oldHistory.length);
+    const captures = added.filter(function (entry) {
+        return entry.kind === "capture";
+    });
+    if (captures.length === 0) {
+        return null;
     }
-    return null;
+    return captures[captures.length - 1].to;
 }
 
 function triggerExplosion(pos) {
@@ -1028,9 +1147,9 @@ function shakeBoard() {
 function playBoomSound() {
     const audio = new Audio("resource/sound.mp3");
     audio.volume = 0.6;
-    audio.play().catch(function () { });
+    audio.play().catch(function () {
+        return;
+    });
 }
-
-// window.Game = Game;   // Uncomment for console debugging
 
 init();
