@@ -21,7 +21,8 @@
     --highlight-legal: rgba(0, 166, 255, 0.55);
     --highlight-deploy: rgba(255, 165, 0, 0.85);
     --highlight-lockon: rgba(220, 50, 50, 0.9);
-    --cell-size: 80px;
+    /* Fluid cell size: shrinks continuously with the viewport, capped at 80px. */
+    --cell-size: clamp(34px, 8.2vmin, 80px);
 }
 
 * {
@@ -141,7 +142,7 @@ header h1 {
     gap: 2rem;
     align-items: stretch;
     width: 100%;
-    max-width: 1040px;
+    max-width: min(1040px, 94vw);
 }
 
 /* =========================================================================
@@ -326,7 +327,7 @@ header h1 {
     box-shadow:
         0 0 20px rgba(0, 255, 102, 0.6),
         inset 0 0 40px rgba(0, 255, 102, 0.3);
-    justify-self: start;
+    justify-self: center;
 }
 
 .board::after {
@@ -417,8 +418,8 @@ header h1 {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 28px;
-    height: 28px;
+    width: 35%;
+    height: 35%;
     background-color: var(--highlight-legal);
     border-radius: 50%;
     transform: translate(-50%, -50%);
@@ -427,8 +428,8 @@ header h1 {
 
 .cell-legal.cell-has-piece::after {
     background-color: transparent;
-    width: 70px;
-    height: 70px;
+    width: 86%;
+    height: 86%;
     border: 5px solid var(--highlight-legal);
 }
 
@@ -441,8 +442,8 @@ header h1 {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 28px;
-    height: 28px;
+    width: 35%;
+    height: 35%;
     background-color: var(--highlight-deploy);
     border-radius: 50%;
     transform: translate(-50%, -50%);
@@ -486,8 +487,8 @@ header h1 {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 70px;
-    height: 70px;
+    width: 86%;
+    height: 86%;
     background-color: transparent;
     border: 5px solid var(--highlight-lockon);
     border-radius: 50%;
@@ -851,6 +852,10 @@ button:focus {
         justify-items: center;
     }
 
+    .board {
+        justify-self: center;
+    }
+
     .info-panel {
         width: 100%;
         max-width: 540px;
@@ -858,23 +863,6 @@ button:focus {
 }
 
 @media (max-width: 600px) {
-    :root {
-        --cell-size: 42px;
-    }
-
-    .cell-legal::after,
-    .cell-deploy-target::after {
-        width: 16px;
-        height: 16px;
-    }
-
-    .cell-legal.cell-has-piece::after {
-        width: 36px;
-        height: 36px;
-        border-width: 3px;
-    }
-
-    /* shrink stripes a bit on mobile so they don't dominate */
     .rules-content {
         border-width: 20px;
         padding: 1.25rem 1rem;
@@ -1161,7 +1149,7 @@ button:focus {
     background: #080f08;
     border: 1px solid #1a301a;
     border-radius: 5px;
-    padding: -0.6rem 0.5rem;
+    padding: 0 0.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1359,7 +1347,6 @@ button:focus {
 .name-entry-subtitle {
     font-size: 0.88rem;
     color: rgba(255, 255, 255, 0.947);
-    ;
     margin-top: -0.75rem;
 }
 
@@ -1375,7 +1362,6 @@ button:focus {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(255, 255, 255, 0.947);
-    ;
     margin-bottom: 0.25rem;
 }
 
