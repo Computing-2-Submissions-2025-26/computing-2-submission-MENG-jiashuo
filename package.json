@@ -16,6 +16,7 @@
   "devDependencies": {
     "chai": "^6.2.2",
     "docdash": "^2.0.2",
+    "jslint": "^0.12.1",
     "mocha": "^11.7.5"
   }
 }
