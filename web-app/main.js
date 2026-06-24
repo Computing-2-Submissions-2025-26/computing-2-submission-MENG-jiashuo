@@ -24,12 +24,12 @@ const PIECE_VALUES = {
  *  SESSION STATE
  * ========================================================================= */
 
-let gameState = Game.createInitialGame();
+let selectedMode = "classic";
+let gameState = Game.createInitialGame(selectedMode);
 let selectedCell = null;
 let cursorPos = {col: 0, row: 0};
 let inputMode = "mouse";
 let rookieMode = false;
-let gameMode = "classic";
 let sessionScores = {"1": 0, "2": 0};
 let lastLoser = null;
 let timerInterval = null;
@@ -209,7 +209,7 @@ function showNameEntryModal() {
 function updateModeSelectionButtons() {
     document.querySelectorAll(".mode-option").forEach(function (button) {
         const mode = button.getAttribute("data-mode");
-        const active = mode === gameMode;
+        const active = mode === selectedMode;
         button.classList.toggle("mode-selected", active);
         button.setAttribute("aria-pressed", String(active));
     });
@@ -538,7 +538,7 @@ function renderStatus(state) {
 
     setText("current-player", playerNames[currentPlayer]);
     setText("mode-indicator", "Mode: " + (
-        gameMode === "real"
+        selectedMode === "real"
         ? "Real"
         : "Classic"
     ));
@@ -1106,7 +1106,7 @@ function handleKeyDown(event) {
 }
 
 function startNewGame() {
-    const initial = Game.createInitialGame();
+    const initial = Game.createInitialGame(selectedMode);
     const starter = determineNextStarter();
     const fresh = Object.assign({}, initial);
     fresh.currentPlayer = starter;
@@ -1117,8 +1117,7 @@ function startNewGame() {
 }
 
 function chooseGameMode(mode) {
-    gameMode = mode;
-    Game.setGameMode(mode);
+    selectedMode = mode;
     updateModeSelectionButtons();
     hideModeSelectionModal();
     startNewGame();

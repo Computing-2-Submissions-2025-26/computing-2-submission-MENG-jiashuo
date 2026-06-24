@@ -121,6 +121,26 @@
  * @property {GameStatus}               status            - Game over status.
  */
 
+/**
+ * Find the AA gun zone that covers a given position, if any.
+ * @param   {GameState} state
+ * @param   {Position}  position
+ * @returns {Object|null} The zone object, or null if the position is not
+ *                        inside any zone.
+ */
+
+/**
+ * Check whether both Commanders have been removed simultaneously,
+ * resulting in a draw.
+ * @param   {GameState} state
+ * @returns {boolean}
+ */
+
+/**
+ * Check whether the game ended in a draw.
+ * @param   {GameState} state
+ * @returns {boolean}
+ */
 /* =========================================================================
  *  MODULE CONSTANTS
  * ========================================================================= */
@@ -162,23 +182,9 @@ const BOMBER_RANGE = 2;
 const RECON_RANGE = 2;
 const TANKER_RANGE = 1;
 
-let gameMode = "classic";
-
 /* =========================================================================
  *  STATE CREATION
  * ========================================================================= */
-
-function setGameMode(mode) {
-    gameMode = (
-        mode === "real"
-        ? "real"
-        : "classic"
-    );
-}
-
-function getGameMode() {
-    return gameMode;
-}
 
 function createFixedZones() {
     return [
@@ -293,6 +299,24 @@ function destroyPieceByAAZone(state, from, to, mover) {
     return result;
 }
 
+function checkDraw(state) {
+    let p1HasCommand = false;
+    let p2HasCommand = false;
+    state.board.forEach(function (row) {
+        row.forEach(function (cell) {
+            if (cell !== null && cell.type === "command") {
+                if (cell.owner === 1) {
+                    p1HasCommand = true;
+                }
+                if (cell.owner === 2) {
+                    p2HasCommand = true;
+                }
+            }
+        });
+    });
+    return !p1HasCommand && !p2HasCommand;
+}
+
 function applyPostCaptureAAHit(state, position, mover) {
     const zone = getZoneAt(state, position);
     const zoneOwner = (
@@ -354,12 +378,6 @@ function createInitialGame(mode) {
         playerRow(2)
     ];
 
-    const activeMode = (
-        mode === undefined
-        ? gameMode
-        : mode
-    );
-
     return {
         board: board,
         currentPlayer: 1,
@@ -369,7 +387,7 @@ function createInitialGame(mode) {
         moveHistory: [],
         status: "playing",
         aaZones: (
-            activeMode === "real"
+            mode === "real"
             ? createFixedZones()
             : []
         )
@@ -798,23 +816,7 @@ function getMoveHistory(state) {
     return state.moveHistory.slice();
 }
 
-function checkDraw(state) {
-    let p1HasCommand = false;
-    let p2HasCommand = false;
-    state.board.forEach(function (row) {
-        row.forEach(function (cell) {
-            if (cell !== null && cell.type === "command") {
-                if (cell.owner === 1) {
-                    p1HasCommand = true;
-                }
-                if (cell.owner === 2) {
-                    p2HasCommand = true;
-                }
-            }
-        });
-    });
-    return !p1HasCommand && !p2HasCommand;
-}
+
 
 /**
  * Check whether the game has finished.
@@ -1088,8 +1090,6 @@ function lockOnAttack(state, fighterPosition, targetPosition) {
  * ========================================================================= */
 const Game = {
     createInitialGame: createInitialGame,
-    setGameMode: setGameMode,
-    getGameMode: getGameMode,
     getZoneAt: getZoneAt,
     getCurrentPlayer: getCurrentPlayer,
     getPieceAt: getPieceAt,
