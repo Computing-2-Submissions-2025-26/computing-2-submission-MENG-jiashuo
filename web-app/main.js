@@ -122,11 +122,8 @@ function updateBGMButton() {
     if (!btn) {
         return;
     }
-
-    btn.innerHTML = bgmEnabled
-        ? `<img src="resource/silent1.png" alt="Music">`
-        : `<img src="resource/silent.png" alt="Muted">`;
-
+    document.getElementById("bgm-icon-on").hidden = !bgmEnabled;
+    document.getElementById("bgm-icon-off").hidden = bgmEnabled;
     btn.setAttribute(
         "aria-label",
         (
