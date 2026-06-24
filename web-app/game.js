@@ -81,7 +81,7 @@
  *  - "player1Won" — Player 1 has captured Player 2's Command.
  *  - "player2Won" — Player 2 has captured Player 1's Command.
  *
- * @typedef {("playing"|"player1Won"|"player2Won")} GameStatus
+ * @typedef {("playing"|"player1Won"|"player2Won"|"draw")} GameStatus
  */
 
 /**
@@ -133,7 +133,8 @@ const BACK_ROW = [
 const STATUS_TO_WINNER = {
     player1Won: 1,
     player2Won: 2,
-    playing: null
+    playing: null,
+    draw: null
 };
 
 const KNIGHT_OFFSETS = [
@@ -272,6 +273,12 @@ function destroyPieceByAAZone(state, from, to, mover) {
         captured: mover,
         capturer: zoneOwner
     };
+    const commandLost = mover.type === "command";
+    const lossStatus = (
+        mover.owner === 1
+        ? "player2Won"
+        : "player1Won"
+    );
     const result = Object.assign({}, state);
     result.board = newBoard;
     result.moveHistory = state.moveHistory.concat([record]);
@@ -279,6 +286,44 @@ function destroyPieceByAAZone(state, from, to, mover) {
     result.awaitingDeploy = false;
     result.lastMovedBombers = Object.assign({}, state.lastMovedBombers);
     result.lastMovedBombers[mover.owner] = null;
+    if (commandLost) {
+        result.status = lossStatus;
+        result.currentPlayer = otherPlayer(mover.owner);
+    }
+    return result;
+}
+
+function applyPostCaptureAAHit(state, position, mover) {
+    const zone = getZoneAt(state, position);
+    const zoneOwner = (
+        zone !== null
+        ? zone.owner
+        : otherPlayer(mover.owner)
+    );
+    const newBoard = setPiece(state.board, position, null);
+    const record = {
+        kind: "capture",
+        from: position,
+        to: position,
+        piece: mover,
+        captured: mover,
+        capturer: zoneOwner
+    };
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    result.moveHistory = state.moveHistory.concat([record]);
+    result.awaitingDeploy = false;
+    if (checkDraw(result)) {
+        result.status = "draw";
+        result.currentPlayer = state.currentPlayer;
+    } else if (mover.type === "command") {
+        result.status = (
+            mover.owner === 1
+            ? "player2Won"
+            : "player1Won"
+        );
+        result.currentPlayer = otherPlayer(mover.owner);
+    }
     return result;
 }
 
@@ -753,6 +798,24 @@ function getMoveHistory(state) {
     return state.moveHistory.slice();
 }
 
+function checkDraw(state) {
+    let p1HasCommand = false;
+    let p2HasCommand = false;
+    state.board.forEach(function (row) {
+        row.forEach(function (cell) {
+            if (cell !== null && cell.type === "command") {
+                if (cell.owner === 1) {
+                    p1HasCommand = true;
+                }
+                if (cell.owner === 2) {
+                    p2HasCommand = true;
+                }
+            }
+        });
+    });
+    return !p1HasCommand && !p2HasCommand;
+}
+
 /**
  * Check whether the game has finished.
  * @param   {GameState} state
@@ -760,6 +823,10 @@ function getMoveHistory(state) {
  */
 function isGameOver(state) {
     return state.status !== "playing";
+}
+
+function isDraw(state) {
+    return state.status === "draw";
 }
 
 /**
@@ -794,15 +861,18 @@ function makeMove(state, from, to) {
     const mover = state.board[from.row][from.col];
     const target = state.board[to.row][to.col];
 
-    if (isAAZoneHit(state, from, to, mover)) {
-        return destroyPieceByAAZone(state, from, to, mover);
-    }
-
     if (target !== null && target.owner === mover.owner) {
         return applyBoard(state, from, to, mover);
     }
     if (target !== null) {
-        return applyCapture(state, from, to, mover, target);
+        const afterCapture = applyCapture(state, from, to, mover, target);
+        if (isAAZoneHit(afterCapture, to, mover)) {
+            return applyPostCaptureAAHit(afterCapture, to, mover);
+        }
+        return afterCapture;
+    }
+    if (isAAZoneHit(state, to, mover)) {
+        return destroyPieceByAAZone(state, from, to, mover);
     }
     return applyRegularMove(state, from, to, mover);
 }
@@ -1031,6 +1101,8 @@ const Game = {
     getCapturedPieces: getCapturedPieces,
     getMoveHistory: getMoveHistory,
     isGameOver: isGameOver,
+    isDraw: isDraw,
+    checkDraw: checkDraw,
     getWinner: getWinner,
     makeMove: makeMove,
     deployPlane: deployPlane,

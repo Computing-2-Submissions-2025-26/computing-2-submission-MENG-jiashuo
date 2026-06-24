@@ -210,7 +210,7 @@ function updateModeSelectionButtons() {
     document.querySelectorAll(".mode-option").forEach(function (button) {
         const mode = button.getAttribute("data-mode");
         const active = mode === gameMode;
-        button.classList.toggle("mode-option-selected", active);
+        button.classList.toggle("mode-selected", active);
         button.setAttribute("aria-pressed", String(active));
     });
 }
@@ -682,13 +682,25 @@ function renderCapturedPieces(state) {
 
 function renderGameOver(state) {
     const overlay = document.getElementById("game-over-overlay");
+    const subtitle = document.getElementById("game-over-subtitle");
     if (Game.isGameOver(state)) {
-        const winner = Game.getWinner(state);
-        setText("winner-message", playerNames[winner] + " Wins");
-        overlay.classList.toggle("player2-wins", winner === 2);
+        if (Game.isDraw(state)) {
+            setText("winner-message", "DRAW — MUTUAL DESTRUCTION");
+            subtitle.textContent = "Both Command aircraft destroyed simultaneously";
+            overlay.classList.remove("player2-wins");
+            overlay.classList.add("game-draw");
+        } else {
+            const winner = Game.getWinner(state);
+            setText("winner-message", playerNames[winner] + " Wins");
+            subtitle.textContent = "";
+            overlay.classList.remove("game-draw");
+            overlay.classList.toggle("player2-wins", winner === 2);
+        }
         overlay.removeAttribute("hidden");
     } else {
         overlay.classList.remove("player2-wins");
+        overlay.classList.remove("game-draw");
+        subtitle.textContent = "";
         overlay.setAttribute("hidden", "");
     }
 }

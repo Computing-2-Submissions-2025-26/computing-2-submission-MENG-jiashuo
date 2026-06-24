@@ -110,6 +110,7 @@
     <div id="game-over-overlay" hidden role="alertdialog" aria-labelledby="winner-message" aria-modal="true">
         <div class="overlay-content">
             <h2 id="winner-message"></h2>
+            <p id="game-over-subtitle" class="game-over-subtitle"></p>
             <button type="button" id="new-game-overlay">Play Again</button>
         </div>
     </div>
@@ -133,13 +134,15 @@
             <h2 id="mode-selection-title">Mission Mode</h2>
             <p class="name-entry-subtitle">Choose how the battle will be fought</p>
             <div class="mode-options">
-                <button type="button" class="mode-option" id="mode-classic" data-mode="classic" aria-pressed="true">
+                <button type="button" class="mode-option mode-card-classic" id="mode-classic" data-mode="classic" aria-pressed="true">
+                    <span class="mode-card-badge">STANDARD</span>
                     <span class="mode-title">Classic</span>
-                    <span class="mode-description">Current rules with no AA gun zones.</span>
+                    <span class="mode-description">Standard air combat rules. Capture the enemy Command aircraft to win.</span>
                 </button>
-                <button type="button" class="mode-option" id="mode-real" data-mode="real" aria-pressed="false">
-                    <span class="mode-title">Real</span>
-                    <span class="mode-description">AA gun zones threaten enemy pieces in the middle of the board.</span>
+                <button type="button" class="mode-option mode-card-real" id="mode-real" data-mode="real" aria-pressed="false">
+                    <span class="mode-card-badge">ADVANCED</span>
+                    <span class="mode-title">Real Battle</span>
+                    <span class="mode-description">Restricted airspace is active. Enemy air defense zones will automatically destroy any aircraft that enters. (excluded fighters). Capture the enemy Command to win.</span>
                 </button>
             </div>
         </div>

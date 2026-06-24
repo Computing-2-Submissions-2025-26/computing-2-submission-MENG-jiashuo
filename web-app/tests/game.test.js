@@ -342,7 +342,7 @@ describe("Aircraft Chess rules", function () {
             ]);
         });
 
-        it("destroys a non-fighter piece and records it as a capture when it lands on an enemy zone", function () {
+        it("destroys a non-fighter piece that moves into an empty enemy AA zone", function () {
             const initial = Game.createInitialGame("classic");
             const board = makeBoard(initial, {
                 "4,0": { type: "tanker", owner: 1 },
@@ -366,6 +366,251 @@ describe("Aircraft Chess rules", function () {
             expect(history[0].kind).to.equal("capture");
             expect(history[0].captured).to.deep.equal({ type: "tanker", owner: 1 });
             expect(history[0].capturer).to.equal(2);
+        });
+
+        it("lets a fighter move into an empty enemy AA zone unharmed", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "3,0": { type: "fighter", owner: 1 },
+                "5,1": null,
+                "0,0": null
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 3, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.getPieceAt(after, { row: 5, col: 1 }))
+                .to.deep.equal({ type: "fighter", owner: 1 });
+        });
+
+        it("captures normally when a non-fighter takes a piece on a non-AA cell", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "4,4": { type: "recon", owner: 1 },
+                "5,5": { type: "bomber", owner: 2 }
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 4 }, { row: 5, col: 5 });
+
+            expect(Game.getPieceAt(after, { row: 5, col: 5 }))
+                .to.deep.equal({ type: "recon", owner: 1 });
+            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                { type: "bomber", owner: 2 }
+            ]);
+        });
+
+        it("destroys both pieces when a non-fighter captures inside an enemy AA zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "4,0": { type: "recon", owner: 1 },
+                "5,1": { type: "bomber", owner: 2 }
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                { type: "bomber", owner: 2 }
+            ]);
+            expect(Game.getCapturedPieces(after, 1)).to.deep.equal([
+                { type: "recon", owner: 1 }
+            ]);
+        });
+
+        it("lets a fighter survive after capturing inside an enemy AA zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "3,0": { type: "fighter", owner: 1 },
+                "5,1": { type: "bomber", owner: 2 },
+                "0,0": null
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 3, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.getPieceAt(after, { row: 5, col: 1 }))
+                .to.deep.equal({ type: "fighter", owner: 1 });
+            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                { type: "bomber", owner: 2 }
+            ]);
+            expect(Game.getCapturedPieces(after, 1)).to.deep.equal([]);
+        });
+
+        it("does not trigger AA check when a fighter uses lock-on inside an enemy AA zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "4,0": { type: "fighter", owner: 1 },
+                "5,1": { type: "bomber", owner: 2 },
+                "0,0": null
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.lockOnAttack(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            expect(Game.getPieceAt(after, { row: 4, col: 0 }))
+                .to.deep.equal({ type: "fighter", owner: 1 });
+            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                { type: "bomber", owner: 2 }
+            ]);
+            expect(Game.getCapturedPieces(after, 1)).to.deep.equal([]);
+        });
+    });
+
+    describe("draw detection when both Commanders are lost", function () {
+        it("declares P1 winner when P1 Commander captures P2 Commander on a normal cell", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "0,4": null,
+                "7,4": null,
+                "4,3": { type: "command", owner: 1 },
+                "5,4": { type: "command", owner: 2 }
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 3 }, { row: 5, col: 4 });
+
+            expect(Game.isGameOver(after)).to.equal(true);
+            expect(Game.isDraw(after)).to.equal(false);
+            expect(Game.getWinner(after)).to.equal(1);
+        });
+
+        it("declares P1 winner when P1 non-Commander captures P2 Commander on a normal cell", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "4,4": { type: "recon", owner: 1 },
+                "5,5": { type: "command", owner: 2 }
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 4 }, { row: 5, col: 5 });
+
+            expect(Game.isGameOver(after)).to.equal(true);
+            expect(Game.isDraw(after)).to.equal(false);
+            expect(Game.getWinner(after)).to.equal(1);
+        });
+
+        it("triggers a draw when P1 Commander captures P2 Commander inside P2 AA zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "0,4": null,
+                "7,4": null,
+                "4,0": { type: "command", owner: 1 },
+                "5,1": { type: "command", owner: 2 }
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.isGameOver(after)).to.equal(true);
+            expect(Game.isDraw(after)).to.equal(true);
+            expect(Game.getWinner(after)).to.equal(null);
+            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+        });
+
+        it("declares P2 winner when P1 Commander moves into an empty P2 AA zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "0,4": null,
+                "4,0": { type: "command", owner: 1 },
+                "5,1": null
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.isGameOver(after)).to.equal(true);
+            expect(Game.isDraw(after)).to.equal(false);
+            expect(Game.getWinner(after)).to.equal(2);
+            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+        });
+
+        it("declares P2 winner when P1 Commander captures a non-Commander inside P2 AA zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "0,4": null,
+                "4,0": { type: "command", owner: 1 },
+                "5,1": { type: "recon", owner: 2 }
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.isGameOver(after)).to.equal(true);
+            expect(Game.isDraw(after)).to.equal(false);
+            expect(Game.getWinner(after)).to.equal(2);
+            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                { type: "recon", owner: 2 }
+            ]);
         });
     });
 });

@@ -878,6 +878,24 @@ button:focus {
     letter-spacing: 0.15em;
 }
 
+.game-over-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.game-over-subtitle:empty {
+    display: none;
+}
+
+#game-over-overlay.game-draw .overlay-content {
+    border-top-color: #aaa;
+}
+
+#game-over-overlay.game-draw #winner-message {
+    color: #aaa;
+}
+
 #game-over-overlay.player2-wins .overlay-content {
     border-top-color: #ff5050;
 }
@@ -1384,7 +1402,7 @@ button:focus {
 }
 
 .mode-selection-content {
-    max-width: 580px;
+    max-width: 620px;
 }
 
 .mode-options {
@@ -1393,33 +1411,86 @@ button:focus {
 }
 
 .mode-option {
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.08);
+    position: relative;
+    height: 140px;
+    width: 100%;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
     color: white;
-    padding: 1rem 1.1rem;
-    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
     cursor: pointer;
     text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: border-color 0.25s, box-shadow 0.25s;
 }
 
-.mode-option-selected {
-    border-color: #00e833;
-    background: rgba(0, 232, 51, 0.16);
+.mode-card-classic {
+    background:
+        linear-gradient(to right,
+            rgba(0, 0, 0, 0.85) 0%,
+            rgba(0, 0, 0, 0.5) 60%,
+            rgba(0, 0, 0, 0.2) 100%),
+        url("resource/normal (1).jpg") center / cover no-repeat;
+}
+
+.mode-card-real {
+    background:
+        linear-gradient(to right,
+            rgba(0, 0, 0, 0.85) 0%,
+            rgba(0, 0, 0, 0.5) 60%,
+            rgba(0, 0, 0, 0.2) 100%),
+        url("resource/normal (2).jpg") center / cover no-repeat;
+}
+
+.mode-card-classic.mode-selected {
+    border: 3px solid #00a6ff;
+    box-shadow: 0 0 12px rgba(0, 166, 255, 0.5);
+}
+
+.mode-card-real.mode-selected {
+    border: 3px solid #ff4444;
+    box-shadow: 0 0 12px rgba(255, 68, 68, 0.5);
 }
 
 .mode-title {
-    font-size: 1rem;
+    font-family: "Oswald", "Impact", sans-serif;
+    font-size: 1.3rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
+}
+
+.mode-card-classic .mode-title {
+    color: #00a6ff;
+}
+
+.mode-card-real .mode-title {
+    color: #ff4444;
 }
 
 .mode-description {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 60%;
+}
+
+.mode-card-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-family: "Oswald", "Impact", sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(0, 0, 0, 0.55);
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 #name-entry-title {
@@ -1504,11 +1575,11 @@ button:focus {
     background-image: repeating-linear-gradient(
         45deg,
         rgba(0, 150, 255, 0.55) 0px,
-        rgba(0, 150, 255, 0.55) 2px,
+        rgba(0, 150, 255, 0.55) 4px,
         transparent 2px,
         transparent 8px
     );
-    outline: 1px solid rgba(0, 150, 255, 0.6);
+    outline: 2px solid rgba(0, 150, 255, 0.6);
     outline-offset: -1px;
 }
 
@@ -1516,10 +1587,10 @@ button:focus {
     background-image: repeating-linear-gradient(
         45deg,
         rgba(220, 30, 30, 0.55) 0px,
-        rgba(220, 30, 30, 0.55) 2px,
+        rgba(220, 30, 30, 0.55) 4px,
         transparent 2px,
         transparent 8px
     );
-    outline: 1px solid rgba(220, 30, 30, 0.6);
+    outline: 2px solid rgba(220, 30, 30, 0.6);
     outline-offset: -1px;
 }
