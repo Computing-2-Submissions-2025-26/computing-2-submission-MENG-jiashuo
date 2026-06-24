@@ -122,11 +122,11 @@ function updateBGMButton() {
     if (!btn) {
         return;
     }
-    btn.textContent = (
-        bgmEnabled
-        ? "🔊"
-        : "🔇"
-    );
+
+    btn.innerHTML = bgmEnabled
+        ? `<img src="resource/silent1.png" alt="Music">`
+        : `<img src="resource/silent.png" alt="Muted">`;
+
     btn.setAttribute(
         "aria-label",
         (
