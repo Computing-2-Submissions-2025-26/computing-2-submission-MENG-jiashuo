@@ -13,6 +13,7 @@
  * @module aircraftChess
  */
 
+
 /* =========================================================================
  *  TYPE DEFINITIONS
  * ========================================================================= */
@@ -160,53 +161,62 @@ const BOMBER_RANGE = 2;
 const RECON_RANGE = 2;
 const TANKER_RANGE = 1;
 
+let gameMode = "classic";
+
 /* =========================================================================
  *  STATE CREATION
  * ========================================================================= */
 
-/**
- * Create a new game with all aircraft in their starting positions
- * and Player 1 to move first.
- *
- * @returns {GameState} A fresh game state ready to play.
- */
-function createInitialGame() {
-    function emptyRow() {
-        return new Array(8).fill(null);
-    }
-    function playerRow(player) {
-        return BACK_ROW.map(function (type) {
-            return {type: type, owner: player};
-        });
-    }
-
-    const board = [
-        playerRow(1),
-        emptyRow(),
-        emptyRow(),
-        emptyRow(),
-        emptyRow(),
-        emptyRow(),
-        emptyRow(),
-        playerRow(2)
-    ];
-
-    return {
-        board: board,
-        currentPlayer: 1,
-        carrying: {"1": null, "2": null},
-        lastMovedBombers: {"1": null, "2": null},
-        awaitingDeploy: false,
-        moveHistory: [],
-        status: "playing"
-    };
+function setGameMode(mode) {
+    gameMode = (
+        mode === "real"
+        ? "real"
+        : "classic"
+    );
 }
 
-/* =========================================================================
- *  INTERNAL HELPERS
- * ========================================================================= */
+function getGameMode() {
+    return gameMode;
+}
 
-/** @private */
+function createFixedZones() {
+    return [
+        {
+            owner: 1,
+            cells: [
+                {row: 2, col: 0},
+                {row: 2, col: 2},
+                {row: 2, col: 4},
+                {row: 2, col: 6}
+            ]
+        },
+        {
+            owner: 2,
+            cells: [
+                {row: 5, col: 1},
+                {row: 5, col: 3},
+                {row: 5, col: 5},
+                {row: 5, col: 7}
+            ]
+        }
+    ];
+}
+
+function isPositionInZone(position, zone) {
+    return zone.cells.some(function (cell) {
+        return cell.row === position.row && cell.col === position.col;
+    });
+}
+
+function getZoneAt(state, position) {
+    if (!Array.isArray(state.aaZones)) {
+        return null;
+    }
+    return state.aaZones.find(function (zone) {
+        return isPositionInZone(position, zone);
+    }) || null;
+}
+
 function isOnBoard(row, col) {
     return row >= 0 && row <= 7 && col >= 0 && col <= 7;
 }
@@ -236,6 +246,96 @@ function setPiece(board, position, piece) {
     });
 }
 
+
+function isAAZoneHit(state, to, mover) {
+    if (mover.type === "fighter" || state.aaZones.length === 0) {
+        return false;
+    }
+
+    const zone = getZoneAt(state, to);
+    return zone !== null && zone.owner !== mover.owner;
+}
+
+function destroyPieceByAAZone(state, from, to, mover) {
+    const zone = getZoneAt(state, to);
+    const zoneOwner = (
+        zone !== null
+        ? zone.owner
+        : mover.owner
+    );
+    const newBoard = setPiece(setPiece(state.board, from, null), to, null);
+    const record = {
+        kind: "capture",
+        from: from,
+        to: to,
+        piece: mover,
+        captured: mover,
+        capturer: zoneOwner
+    };
+    const result = Object.assign({}, state);
+    result.board = newBoard;
+    result.moveHistory = state.moveHistory.concat([record]);
+    result.currentPlayer = otherPlayer(state.currentPlayer);
+    result.awaitingDeploy = false;
+    result.lastMovedBombers = Object.assign({}, state.lastMovedBombers);
+    result.lastMovedBombers[mover.owner] = null;
+    return result;
+}
+
+/**
+ * Create a new game with all aircraft in their starting positions
+ * and Player 1 to move first.
+ *
+ * @returns {GameState} A fresh game state ready to play.
+ */
+function createInitialGame(mode) {
+    function emptyRow() {
+        return new Array(8).fill(null);
+    }
+    function playerRow(player) {
+        return BACK_ROW.map(function (type) {
+            return {type: type, owner: player};
+        });
+    }
+
+    const board = [
+        playerRow(1),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        emptyRow(),
+        playerRow(2)
+    ];
+
+    const activeMode = (
+        mode === undefined
+        ? gameMode
+        : mode
+    );
+
+    return {
+        board: board,
+        currentPlayer: 1,
+        carrying: {"1": null, "2": null},
+        lastMovedBombers: {"1": null, "2": null},
+        awaitingDeploy: false,
+        moveHistory: [],
+        status: "playing",
+        aaZones: (
+            activeMode === "real"
+            ? createFixedZones()
+            : []
+        )
+    };
+}
+
+/* =========================================================================
+ *  INTERNAL HELPERS
+ * ========================================================================= */
+
+/** @private */
 /** @private */
 function nextCooldownAfterMove(state, mover, to) {
     const result = Object.assign({}, state.lastMovedBombers);
@@ -694,6 +794,10 @@ function makeMove(state, from, to) {
     const mover = state.board[from.row][from.col];
     const target = state.board[to.row][to.col];
 
+    if (isAAZoneHit(state, from, to, mover)) {
+        return destroyPieceByAAZone(state, from, to, mover);
+    }
+
     if (target !== null && target.owner === mover.owner) {
         return applyBoard(state, from, to, mover);
     }
@@ -914,6 +1018,9 @@ function lockOnAttack(state, fighterPosition, targetPosition) {
  * ========================================================================= */
 const Game = {
     createInitialGame: createInitialGame,
+    setGameMode: setGameMode,
+    getGameMode: getGameMode,
+    getZoneAt: getZoneAt,
     getCurrentPlayer: getCurrentPlayer,
     getPieceAt: getPieceAt,
     getLegalMoves: getLegalMoves,

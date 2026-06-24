@@ -331,6 +331,43 @@ describe("Aircraft Chess rules", function () {
             expect(before.moveHistory).to.have.lengthOf(0);
         });
     });
+
+    describe("AA gun zones in real mode", function () {
+        it("uses the fixed single-cell zones specified for each player", function () {
+            const state = Game.createInitialGame("real");
+
+            expect(state.aaZones).to.deep.equal([
+                { owner: 1, cells: [{ row: 2, col: 0 }, { row: 2, col: 2 }, { row: 2, col: 4 }, { row: 2, col: 6 }] },
+                { owner: 2, cells: [{ row: 5, col: 1 }, { row: 5, col: 3 }, { row: 5, col: 5 }, { row: 5, col: 7 }] }
+            ]);
+        });
+
+        it("destroys a non-fighter piece and records it as a capture when it lands on an enemy zone", function () {
+            const initial = Game.createInitialGame("classic");
+            const board = makeBoard(initial, {
+                "4,0": { type: "tanker", owner: 1 },
+                "5,1": null
+            });
+            const state = {
+                ...initial,
+                board,
+                aaZones: [{
+                    owner: 2,
+                    cells: [{ row: 5, col: 1 }]
+                }],
+                currentPlayer: 1
+            };
+            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+
+            expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            const history = Game.getMoveHistory(after);
+            expect(history).to.have.lengthOf(1);
+            expect(history[0].kind).to.equal("capture");
+            expect(history[0].captured).to.deep.equal({ type: "tanker", owner: 1 });
+            expect(history[0].capturer).to.equal(2);
+        });
+    });
 });
 
 function initialState() {

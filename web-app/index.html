@@ -72,6 +72,7 @@
                 </div>
 
                 <p id="status-message">Click a piece to select</p>
+                <p id="mode-indicator" class="mode-indicator">Mode: Classic</p>
 
                 <div class="tanker-summary" aria-label="Tanker cargo status">
                     <p><span id="tname-p1">Player 1</span> tanker: <span id="tanker-status-p1"
@@ -124,6 +125,23 @@
                 <input type="text" id="name-p2" placeholder="Player 2" maxlength="20" autocomplete="off">
             </div>
             <button type="button" id="confirm-names">Confirm</button>
+        </div>
+    </div>
+
+    <div id="mode-selection-modal" hidden role="dialog" aria-labelledby="mode-selection-title" aria-modal="true">
+        <div class="name-entry-content mode-selection-content">
+            <h2 id="mode-selection-title">Mission Mode</h2>
+            <p class="name-entry-subtitle">Choose how the battle will be fought</p>
+            <div class="mode-options">
+                <button type="button" class="mode-option" id="mode-classic" data-mode="classic" aria-pressed="true">
+                    <span class="mode-title">Classic</span>
+                    <span class="mode-description">Current rules with no AA gun zones.</span>
+                </button>
+                <button type="button" class="mode-option" id="mode-real" data-mode="real" aria-pressed="false">
+                    <span class="mode-title">Real</span>
+                    <span class="mode-description">AA gun zones threaten enemy pieces in the middle of the board.</span>
+                </button>
+            </div>
         </div>
     </div>
 

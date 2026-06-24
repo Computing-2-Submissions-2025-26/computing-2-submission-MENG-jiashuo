@@ -166,7 +166,9 @@ header h1 {
  *  MISSION BRIEF aesthetic.
  * ========================================================================= */
 
-#rules-modal {
+#rules-modal,
+#mode-selection-modal,
+#name-entry-modal {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.85);
@@ -178,7 +180,9 @@ header h1 {
     overflow-y: auto;
 }
 
-#rules-modal[hidden] {
+#rules-modal[hidden],
+#mode-selection-modal[hidden],
+#name-entry-modal[hidden] {
     display: none;
 }
 
@@ -435,6 +439,8 @@ header h1 {
     image-rendering: pixelated;
     object-fit: contain;
     pointer-events: none;
+    position: relative;
+    z-index: 1;
 }
 
 .piece-p1 img {
@@ -1348,7 +1354,8 @@ button:focus {
 
 /* ===== Name-entry func ===== */
 
-#name-entry-modal {
+#name-entry-modal,
+#mode-selection-modal {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.85);
@@ -1359,7 +1366,8 @@ button:focus {
     padding: 1rem;
 }
 
-#name-entry-modal[hidden] {
+#name-entry-modal[hidden],
+#mode-selection-modal[hidden] {
     display: none;
 }
 
@@ -1373,6 +1381,45 @@ button:focus {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+}
+
+.mode-selection-content {
+    max-width: 580px;
+}
+
+.mode-options {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.mode-option {
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    padding: 1rem 1.1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.mode-option-selected {
+    border-color: #00e833;
+    background: rgba(0, 232, 51, 0.16);
+}
+
+.mode-title {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.mode-description {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
 }
 
 #name-entry-title {
@@ -1438,4 +1485,41 @@ button:focus {
     padding: 0.6rem 2rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.mode-indicator {
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7bc599de;
+    margin-top: 0.25rem;
+}
+
+.cell-aa-zone {
+    background-color: transparent;
+}
+
+.cell-aa-p1 {
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(0, 150, 255, 0.55) 0px,
+        rgba(0, 150, 255, 0.55) 2px,
+        transparent 2px,
+        transparent 8px
+    );
+    outline: 1px solid rgba(0, 150, 255, 0.6);
+    outline-offset: -1px;
+}
+
+.cell-aa-p2 {
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(220, 30, 30, 0.55) 0px,
+        rgba(220, 30, 30, 0.55) 2px,
+        transparent 2px,
+        transparent 8px
+    );
+    outline: 1px solid rgba(220, 30, 30, 0.6);
+    outline-offset: -1px;
 }

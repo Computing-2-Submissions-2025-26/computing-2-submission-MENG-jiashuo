@@ -3,7 +3,7 @@
  * @author Jiashuo Meng
  */
 
-/*jslint browser*/
+/*jslint browser */
 import Game from "./game.js";
 
 
@@ -29,6 +29,7 @@ let selectedCell = null;
 let cursorPos = {col: 0, row: 0};
 let inputMode = "mouse";
 let rookieMode = false;
+let gameMode = "classic";
 let sessionScores = {"1": 0, "2": 0};
 let lastLoser = null;
 let timerInterval = null;
@@ -73,14 +74,19 @@ function updateScoresFromCaptures(previousState, newState) {
 
     // The capturer is whoever was on move BEFORE the action: read it
     // from the previous state, since capturing the Command does not
-    // pass the turn.
-    const capturer = Game.getCurrentPlayer(previousState);
+    // pass the turn. AA-zone kills use the zone owner from the record.
+    const fallbackCapturer = Game.getCurrentPlayer(previousState);
 
     newEntries.filter(function (entry) {
         return entry.kind === "capture";
     }).forEach(function (entry) {
         const value = PIECE_VALUES[entry.captured.type] || 0;
-        sessionScores[capturer] += value;
+        const scorer = (
+            entry.capturer !== undefined
+            ? entry.capturer
+            : fallbackCapturer
+        );
+        sessionScores[scorer] += value;
     });
 }
 
@@ -199,6 +205,35 @@ function showNameEntryModal() {
     document.getElementById("name-entry-modal").removeAttribute("hidden");
     document.getElementById("name-p1").focus();
 }
+
+function updateModeSelectionButtons() {
+    document.querySelectorAll(".mode-option").forEach(function (button) {
+        const mode = button.getAttribute("data-mode");
+        const active = mode === gameMode;
+        button.classList.toggle("mode-option-selected", active);
+        button.setAttribute("aria-pressed", String(active));
+    });
+}
+
+function showModeSelectionModal() {
+    stopTimer();
+    const modal = document.getElementById("mode-selection-modal");
+    if (modal) {
+        updateModeSelectionButtons();
+        modal.removeAttribute("hidden");
+    }
+}
+
+function hideModeSelectionModal() {
+    const modal = document.getElementById("mode-selection-modal");
+    if (modal) {
+        modal.setAttribute("hidden", "");
+    }
+}
+
+
+
+
 
 function updateTimerDisplay() {
     const digits = document.getElementById("timer-digits");
@@ -458,7 +493,19 @@ function renderBoard(state) {
             : "cell-dark"
         );
 
+        cell.classList.remove("cell-aa-zone", "cell-aa-p1", "cell-aa-p2");
+
         const isCooldownHere = isSamePos(cooldownPos, here);
+        const zone = Game.getZoneAt(state, here);
+
+        if (zone !== null) {
+            cell.classList.add("cell-aa-zone");
+            if (zone.owner === 1) {
+                cell.classList.add("cell-aa-p1");
+            } else {
+                cell.classList.add("cell-aa-p2");
+            }
+        }
 
         if (piece !== null) {
             renderPiece(cell, piece, row, col, isCooldownHere);
@@ -490,6 +537,11 @@ function renderStatus(state) {
     const currentPlayer = Game.getCurrentPlayer(state);
 
     setText("current-player", playerNames[currentPlayer]);
+    setText("mode-indicator", "Mode: " + (
+        gameMode === "real"
+        ? "Real"
+        : "Classic"
+    ));
     setClass("current-player", "player2-turn", currentPlayer === 2);
     setClass("status-panel", "player2-turn", currentPlayer === 2);
     setClass("board", "player2-turn", currentPlayer === 2);
@@ -699,7 +751,7 @@ function handleNameEntry() {
     updateStaticNameLabels();
     render(gameState);
     hideNameEntryModal();
-    showRulesModal();
+    showModeSelectionModal();
 }
 
 function getCaptureTarget(previousState, newState) {
@@ -967,14 +1019,7 @@ function handleSkipDeploy() {
 }
 
 function handleNewGame() {
-    const initial = Game.createInitialGame();
-    const starter = determineNextStarter();
-    const fresh = Object.assign({}, initial);
-    fresh.currentPlayer = starter;
-    gameState = fresh;
-    selectedCell = null;
-    render(gameState);
-    startTimer();
+    showModeSelectionModal();
 }
 
 function hideRulesModal() {
@@ -993,12 +1038,16 @@ function handleKeyDown(event) {
 
     const rulesModal = document.getElementById("rules-modal");
     const nameModal = document.getElementById("name-entry-modal");
+    const modeModal = document.getElementById("mode-selection-modal");
     const rulesOpen = !rulesModal.hasAttribute("hidden");
     const nameOpen = !nameModal.hasAttribute("hidden");
+    const modeOpen = !modeModal.hasAttribute("hidden");
 
     if (event.key === "Escape") {
         if (rulesOpen) {
             hideRulesModal();
+        } else if (modeOpen) {
+            hideModeSelectionModal();
         } else if (!nameOpen) {
             selectedCell = null;
             render(gameState);
@@ -1006,7 +1055,7 @@ function handleKeyDown(event) {
         return;
     }
 
-    if (rulesOpen || nameOpen) {
+    if (rulesOpen || nameOpen || modeOpen) {
         return;
     }
 
@@ -1044,6 +1093,25 @@ function handleKeyDown(event) {
     }
 }
 
+function startNewGame() {
+    const initial = Game.createInitialGame();
+    const starter = determineNextStarter();
+    const fresh = Object.assign({}, initial);
+    fresh.currentPlayer = starter;
+    gameState = fresh;
+    selectedCell = null;
+    render(gameState);
+    startTimer();
+}
+
+function chooseGameMode(mode) {
+    gameMode = mode;
+    Game.setGameMode(mode);
+    updateModeSelectionButtons();
+    hideModeSelectionModal();
+    startNewGame();
+}
+
 function init() {
     const board = document.getElementById("board");
 
@@ -1074,6 +1142,12 @@ function init() {
     bindClick("rookie-toggle", toggleRookieMode);
     updateRookieToggle();
     bindClick("confirm-names", handleNameEntry);
+    bindClick("mode-classic", function () {
+        chooseGameMode("classic");
+    });
+    bindClick("mode-real", function () {
+        chooseGameMode("real");
+    });
 
     const inp1 = document.getElementById("name-p1");
     inp1.addEventListener("keydown", function (e) {
