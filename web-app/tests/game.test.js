@@ -28,6 +28,24 @@ function makeBoard(initial, overrides) {
     });
 }
 
+function initialState() {
+    return Game.createInitialGame();
+}
+
+function buildAAState(overrides) {
+    const initial = Game.createInitialGame("classic");
+    const board = makeBoard(initial, overrides);
+    return {
+        ...initial,
+        board,
+        aaZones: [{
+            owner: 2,
+            cells: [{ row: 5, col: 1 }]
+        }],
+        currentPlayer: 1
+    };
+}
+
 describe("Aircraft Chess rules", function () {
     describe("when a player makes a regular move", function () {
         it("moves the selected piece onto the destination square", function () {
@@ -58,20 +76,30 @@ describe("Aircraft Chess rules", function () {
     });
 
     describe("when a player captures an opposing piece", function () {
-        it("removes the captured piece and records the capture event", function () {
+        let after;
+
+        beforeEach(function () {
             const initial = Game.createInitialGame();
             const board = makeBoard(initial, {
                 "4,4": { type: "recon", owner: 1 },
                 "5,5": { type: "bomber", owner: 2 }
             });
             const state = { ...initial, board, currentPlayer: 1 };
-            const after = Game.makeMove(state, { row: 4, col: 4 }, { row: 5, col: 5 });
+            after = Game.makeMove(state, { row: 4, col: 4 }, { row: 5, col: 5 });
+        });
 
+        it("places the attacker on the captured square", function () {
             expect(Game.getPieceAt(after, { row: 5, col: 5 }))
                 .to.deep.equal({ type: "recon", owner: 1 });
+        });
+
+        it("adds the captured piece to the opponent's loss list", function () {
             expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
                 { type: "bomber", owner: 2 }
             ]);
+        });
+
+        it("records the event as a capture in history", function () {
             expect(Game.getMoveHistory(after).at(-1).kind).to.equal("capture");
         });
     });
@@ -107,19 +135,29 @@ describe("Aircraft Chess rules", function () {
     });
 
     describe("when a piece boards a friendly tanker", function () {
-        it("stores the carried plane and leaves the tanker in place", function () {
+        let after;
+
+        beforeEach(function () {
             const initial = Game.createInitialGame();
             const board = makeBoard(initial, {
                 "4,4": { type: "bomber", owner: 1 },
                 "4,5": { type: "tanker", owner: 1 }
             });
             const state = { ...initial, board, currentPlayer: 1 };
-            const after = Game.makeMove(state, { row: 4, col: 4 }, { row: 4, col: 5 });
+            after = Game.makeMove(state, { row: 4, col: 4 }, { row: 4, col: 5 });
+        });
 
+        it("stores the carried plane as tanker cargo", function () {
             expect(Game.getCarriedPlane(after, 1))
                 .to.deep.equal({ type: "bomber", owner: 1 });
+        });
+
+        it("leaves the tanker on its original square", function () {
             expect(Game.getPieceAt(after, { row: 4, col: 5 }))
                 .to.deep.equal({ type: "tanker", owner: 1 });
+        });
+
+        it("records the action as a board event", function () {
             expect(Game.getMoveHistory(after)[0].kind).to.equal("board");
         });
     });
@@ -153,19 +191,33 @@ describe("Aircraft Chess rules", function () {
     });
 
     describe("when deployment is pending", function () {
-        it("drops the carried plane onto a legal target and clears the cargo", function () {
-            let state = Game.createInitialGame();
-            state = Game.makeMove(state, P1_BOMBER_START, P1_TANKER_START);
-            state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
-            state = Game.makeMove(state, P1_TANKER_START, TANKER_DESTINATION);
+        describe("and a legal target is chosen", function () {
+            let after;
 
-            const after = Game.deployPlane(state, { row: 0, col: 2 });
+            beforeEach(function () {
+                let state = Game.createInitialGame();
+                state = Game.makeMove(state, P1_BOMBER_START, P1_TANKER_START);
+                state = Game.makeMove(state, P2_FIGHTER_START, P2_FIGHTER_TARGET);
+                state = Game.makeMove(state, P1_TANKER_START, TANKER_DESTINATION);
+                after = Game.deployPlane(state, { row: 0, col: 2 });
+            });
 
-            expect(Game.getPieceAt(after, { row: 0, col: 2 }))
-                .to.deep.equal({ type: "bomber", owner: 1 });
-            expect(Game.getCarriedPlane(after, 1)).to.equal(null);
-            expect(Game.getMoveHistory(after).at(-1).kind).to.equal("deploy");
-            expect(Game.getCurrentPlayer(after)).to.equal(2);
+            it("places the passenger on the target square", function () {
+                expect(Game.getPieceAt(after, { row: 0, col: 2 }))
+                    .to.deep.equal({ type: "bomber", owner: 1 });
+            });
+
+            it("clears the tanker cargo", function () {
+                expect(Game.getCarriedPlane(after, 1)).to.equal(null);
+            });
+
+            it("records the action as a deploy event", function () {
+                expect(Game.getMoveHistory(after).at(-1).kind).to.equal("deploy");
+            });
+
+            it("passes the turn to the other player", function () {
+                expect(Game.getCurrentPlayer(after)).to.equal(2);
+            });
         });
 
         it("rejects illegal deployment targets and leaves the state unchanged", function () {
@@ -202,12 +254,19 @@ describe("Aircraft Chess rules", function () {
             expect(Game.getLegalMoves(state, P1_FIGHTER_START)).to.deep.equal([]);
         });
 
-        it("returns no moves for an empty square, an opponent's piece, or a finished game", function () {
+        it("returns no moves for an empty square", function () {
+            const state = Game.createInitialGame();
+            expect(Game.getLegalMoves(state, { row: 4, col: 4 })).to.deep.equal([]);
+        });
+
+        it("returns no moves for an opponent's piece", function () {
+            const state = Game.createInitialGame();
+            expect(Game.getLegalMoves(state, P2_FIGHTER_START)).to.deep.equal([]);
+        });
+
+        it("returns no moves after the game has ended", function () {
             const initial = Game.createInitialGame();
             const over = { ...initial, status: "player1Won" };
-
-            expect(Game.getLegalMoves(initial, { row: 4, col: 4 })).to.deep.equal([]);
-            expect(Game.getLegalMoves(initial, P2_FIGHTER_START)).to.deep.equal([]);
             expect(Game.getLegalMoves(over, P1_FIGHTER_START)).to.deep.equal([]);
         });
     });
@@ -254,15 +313,24 @@ describe("Aircraft Chess rules", function () {
                 .to.deep.equal({ type: "fighter", owner: 1 });
         });
 
-        it("records the attack properly and passes the turn", function () {
-            const state = buildLockOnState();
-            const after = Game.lockOnAttack(state, { row: 4, col: 4 }, { row: 4, col: 5 });
-            const history = Game.getMoveHistory(after);
+        describe("and the attack succeeds", function () {
+            let after;
 
-            expect(history).to.have.lengthOf(1);
-            expect(history[0].kind).to.equal("capture");
-            expect(history[0].captured).to.deep.equal({ type: "bomber", owner: 2 });
-            expect(Game.getCurrentPlayer(after)).to.equal(2);
+            beforeEach(function () {
+                const state = buildLockOnState();
+                after = Game.lockOnAttack(state, { row: 4, col: 4 }, { row: 4, col: 5 });
+            });
+
+            it("records the destroyed piece in history", function () {
+                const history = Game.getMoveHistory(after);
+                expect(history).to.have.lengthOf(1);
+                expect(history[0].kind).to.equal("capture");
+                expect(history[0].captured).to.deep.equal({ type: "bomber", owner: 2 });
+            });
+
+            it("passes the turn to the other player", function () {
+                expect(Game.getCurrentPlayer(after)).to.equal(2);
+            });
         });
 
         it("ends the game when the attacked piece is the enemy Command", function () {
@@ -279,12 +347,18 @@ describe("Aircraft Chess rules", function () {
             expect(Game.getWinner(after)).to.equal(1);
         });
 
-        it("rejects non-adjacent, empty, or friendly targets", function () {
+        it("rejects non-adjacent targets", function () {
             const state = buildLockOnState();
-
             expect(Game.lockOnAttack(state, { row: 4, col: 4 }, { row: 4, col: 7 })).to.equal(state);
-            expect(Game.lockOnAttack(state, { row: 4, col: 4 }, { row: 4, col: 3 })).to.equal(state);
+        });
 
+        it("rejects empty target squares", function () {
+            const state = buildLockOnState();
+            expect(Game.lockOnAttack(state, { row: 4, col: 4 }, { row: 4, col: 3 })).to.equal(state);
+        });
+
+        it("rejects friendly targets", function () {
+            const state = buildLockOnState();
             const friendlyState = { ...state, board: makeBoard(state, { "4,5": { type: "recon", owner: 1 } }) };
             expect(Game.lockOnAttack(friendlyState, { row: 4, col: 4 }, { row: 4, col: 5 })).to.equal(friendlyState);
         });
@@ -342,48 +416,44 @@ describe("Aircraft Chess rules", function () {
             ]);
         });
 
-        it("destroys a non-fighter piece that moves into an empty enemy AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "4,0": { type: "tanker", owner: 1 },
-                "5,1": null
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+        describe("when a non-fighter moves into an empty enemy AA zone", function () {
+            let after;
 
-            expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
-            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
-            const history = Game.getMoveHistory(after);
-            expect(history).to.have.lengthOf(1);
-            expect(history[0].kind).to.equal("capture");
-            expect(history[0].captured).to.deep.equal({ type: "tanker", owner: 1 });
-            expect(history[0].capturer).to.equal(2);
+            beforeEach(function () {
+                const state = buildAAState({
+                    "4,0": { type: "tanker", owner: 1 },
+                    "5,1": null
+                });
+                after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("clears the source square", function () {
+                expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+            });
+
+            it("clears the destination square", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            });
+
+            it("records the destruction as a single capture event", function () {
+                const history = Game.getMoveHistory(after);
+                expect(history).to.have.lengthOf(1);
+                expect(history[0].kind).to.equal("capture");
+            });
+
+            it("attributes the capture to the zone owner", function () {
+                const history = Game.getMoveHistory(after);
+                expect(history[0].captured).to.deep.equal({ type: "tanker", owner: 1 });
+                expect(history[0].capturer).to.equal(2);
+            });
         });
 
         it("lets a fighter move into an empty enemy AA zone unharmed", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
+            const state = buildAAState({
                 "3,0": { type: "fighter", owner: 1 },
                 "5,1": null,
                 "0,0": null
             });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
             const after = Game.makeMove(state, { row: 3, col: 0 }, { row: 5, col: 1 });
 
             expect(Game.getPieceAt(after, { row: 5, col: 1 }))
@@ -391,20 +461,10 @@ describe("Aircraft Chess rules", function () {
         });
 
         it("captures normally when a non-fighter takes a piece on a non-AA cell", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
+            const state = buildAAState({
                 "4,4": { type: "recon", owner: 1 },
                 "5,5": { type: "bomber", owner: 2 }
             });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
             const after = Game.makeMove(state, { row: 4, col: 4 }, { row: 5, col: 5 });
 
             expect(Game.getPieceAt(after, { row: 5, col: 5 }))
@@ -414,84 +474,96 @@ describe("Aircraft Chess rules", function () {
             ]);
         });
 
-        it("destroys both pieces when a non-fighter captures inside an enemy AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "4,0": { type: "recon", owner: 1 },
-                "5,1": { type: "bomber", owner: 2 }
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+        describe("when a non-fighter captures inside an enemy AA zone", function () {
+            let after;
 
-            expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
-            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
-            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
-                { type: "bomber", owner: 2 }
-            ]);
-            expect(Game.getCapturedPieces(after, 1)).to.deep.equal([
-                { type: "recon", owner: 1 }
-            ]);
+            beforeEach(function () {
+                const state = buildAAState({
+                    "4,0": { type: "recon", owner: 1 },
+                    "5,1": { type: "bomber", owner: 2 }
+                });
+                after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("removes the attacker from its source square", function () {
+                expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+            });
+
+            it("removes the attacker from the destination after the AA hit", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            });
+
+            it("credits the attacker with the captured defender", function () {
+                expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                    { type: "bomber", owner: 2 }
+                ]);
+            });
+
+            it("credits the zone owner with the destroyed attacker", function () {
+                expect(Game.getCapturedPieces(after, 1)).to.deep.equal([
+                    { type: "recon", owner: 1 }
+                ]);
+            });
         });
 
-        it("lets a fighter survive after capturing inside an enemy AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "3,0": { type: "fighter", owner: 1 },
-                "5,1": { type: "bomber", owner: 2 },
-                "0,0": null
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.makeMove(state, { row: 3, col: 0 }, { row: 5, col: 1 });
+        describe("when a fighter captures inside an enemy AA zone", function () {
+            let after;
 
-            expect(Game.getPieceAt(after, { row: 5, col: 1 }))
-                .to.deep.equal({ type: "fighter", owner: 1 });
-            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
-                { type: "bomber", owner: 2 }
-            ]);
-            expect(Game.getCapturedPieces(after, 1)).to.deep.equal([]);
+            beforeEach(function () {
+                const state = buildAAState({
+                    "3,0": { type: "fighter", owner: 1 },
+                    "5,1": { type: "bomber", owner: 2 },
+                    "0,0": null
+                });
+                after = Game.makeMove(state, { row: 3, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("keeps the fighter alive on the destination square", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 }))
+                    .to.deep.equal({ type: "fighter", owner: 1 });
+            });
+
+            it("records the defender as captured", function () {
+                expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                    { type: "bomber", owner: 2 }
+                ]);
+            });
+
+            it("does not record the fighter as a loss", function () {
+                expect(Game.getCapturedPieces(after, 1)).to.deep.equal([]);
+            });
         });
 
-        it("does not trigger AA check when a fighter uses lock-on inside an enemy AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "4,0": { type: "fighter", owner: 1 },
-                "5,1": { type: "bomber", owner: 2 },
-                "0,0": null
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.lockOnAttack(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+        describe("when a fighter uses lock-on adjacent to an enemy AA zone", function () {
+            let after;
 
-            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
-            expect(Game.getPieceAt(after, { row: 4, col: 0 }))
-                .to.deep.equal({ type: "fighter", owner: 1 });
-            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
-                { type: "bomber", owner: 2 }
-            ]);
-            expect(Game.getCapturedPieces(after, 1)).to.deep.equal([]);
+            beforeEach(function () {
+                const state = buildAAState({
+                    "4,0": { type: "fighter", owner: 1 },
+                    "5,1": { type: "bomber", owner: 2 },
+                    "0,0": null
+                });
+                after = Game.lockOnAttack(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("removes the target piece", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            });
+
+            it("keeps the fighter on its original square", function () {
+                expect(Game.getPieceAt(after, { row: 4, col: 0 }))
+                    .to.deep.equal({ type: "fighter", owner: 1 });
+            });
+
+            it("records only the defender as captured", function () {
+                expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                    { type: "bomber", owner: 2 }
+                ]);
+            });
+
+            it("does not destroy the fighter via AA zone", function () {
+                expect(Game.getCapturedPieces(after, 1)).to.deep.equal([]);
+            });
         });
     });
 
@@ -536,85 +608,114 @@ describe("Aircraft Chess rules", function () {
             expect(Game.getWinner(after)).to.equal(1);
         });
 
-        it("triggers a draw when P1 Commander captures P2 Commander inside P2 AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "0,4": null,
-                "7,4": null,
-                "4,0": { type: "command", owner: 1 },
-                "5,1": { type: "command", owner: 2 }
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+        describe("when P1 Commander captures P2 Commander inside P2 AA zone", function () {
+            let after;
 
-            expect(Game.isGameOver(after)).to.equal(true);
-            expect(Game.isDraw(after)).to.equal(true);
-            expect(Game.getWinner(after)).to.equal(null);
-            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
-            expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+            beforeEach(function () {
+                const initial = Game.createInitialGame("classic");
+                const board = makeBoard(initial, {
+                    "0,4": null,
+                    "7,4": null,
+                    "4,0": { type: "command", owner: 1 },
+                    "5,1": { type: "command", owner: 2 }
+                });
+                const state = {
+                    ...initial,
+                    board,
+                    aaZones: [{
+                        owner: 2,
+                        cells: [{ row: 5, col: 1 }]
+                    }],
+                    currentPlayer: 1
+                };
+                after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("ends the game as a draw", function () {
+                expect(Game.isGameOver(after)).to.equal(true);
+                expect(Game.isDraw(after)).to.equal(true);
+            });
+
+            it("reports no winner", function () {
+                expect(Game.getWinner(after)).to.equal(null);
+            });
+
+            it("removes both Commanders from the board", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+                expect(Game.getPieceAt(after, { row: 4, col: 0 })).to.equal(null);
+            });
         });
 
-        it("declares P2 winner when P1 Commander moves into an empty P2 AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "0,4": null,
-                "4,0": { type: "command", owner: 1 },
-                "5,1": null
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+        describe("when P1 Commander moves into an empty P2 AA zone", function () {
+            let after;
 
-            expect(Game.isGameOver(after)).to.equal(true);
-            expect(Game.isDraw(after)).to.equal(false);
-            expect(Game.getWinner(after)).to.equal(2);
-            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            beforeEach(function () {
+                const initial = Game.createInitialGame("classic");
+                const board = makeBoard(initial, {
+                    "0,4": null,
+                    "4,0": { type: "command", owner: 1 },
+                    "5,1": null
+                });
+                const state = {
+                    ...initial,
+                    board,
+                    aaZones: [{
+                        owner: 2,
+                        cells: [{ row: 5, col: 1 }]
+                    }],
+                    currentPlayer: 1
+                };
+                after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("ends the game with P2 as winner", function () {
+                expect(Game.isGameOver(after)).to.equal(true);
+                expect(Game.isDraw(after)).to.equal(false);
+                expect(Game.getWinner(after)).to.equal(2);
+            });
+
+            it("removes the Commander from the board", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            });
         });
 
-        it("declares P2 winner when P1 Commander captures a non-Commander inside P2 AA zone", function () {
-            const initial = Game.createInitialGame("classic");
-            const board = makeBoard(initial, {
-                "0,4": null,
-                "4,0": { type: "command", owner: 1 },
-                "5,1": { type: "recon", owner: 2 }
-            });
-            const state = {
-                ...initial,
-                board,
-                aaZones: [{
-                    owner: 2,
-                    cells: [{ row: 5, col: 1 }]
-                }],
-                currentPlayer: 1
-            };
-            const after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+        describe("when P1 Commander captures a non-Commander inside P2 AA zone", function () {
+            let after;
 
-            expect(Game.isGameOver(after)).to.equal(true);
-            expect(Game.isDraw(after)).to.equal(false);
-            expect(Game.getWinner(after)).to.equal(2);
-            expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
-            expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
-                { type: "recon", owner: 2 }
-            ]);
+            beforeEach(function () {
+                const initial = Game.createInitialGame("classic");
+                const board = makeBoard(initial, {
+                    "0,4": null,
+                    "4,0": { type: "command", owner: 1 },
+                    "5,1": { type: "recon", owner: 2 }
+                });
+                const state = {
+                    ...initial,
+                    board,
+                    aaZones: [{
+                        owner: 2,
+                        cells: [{ row: 5, col: 1 }]
+                    }],
+                    currentPlayer: 1
+                };
+                after = Game.makeMove(state, { row: 4, col: 0 }, { row: 5, col: 1 });
+            });
+
+            it("ends the game with P2 as winner", function () {
+                expect(Game.isGameOver(after)).to.equal(true);
+                expect(Game.isDraw(after)).to.equal(false);
+                expect(Game.getWinner(after)).to.equal(2);
+            });
+
+            it("removes the Commander from the board", function () {
+                expect(Game.getPieceAt(after, { row: 5, col: 1 })).to.equal(null);
+            });
+
+            it("still records the defender as captured by the attacker", function () {
+                expect(Game.getCapturedPieces(after, 2)).to.deep.equal([
+                    { type: "recon", owner: 2 }
+                ]);
+            });
         });
     });
 });
-
-function initialState() {
-    return Game.createInitialGame();
-}
