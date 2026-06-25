@@ -80,6 +80,7 @@
  *  - "playing"    — the game is in progress.
  *  - "player1Won" — Player 1 has captured Player 2's Command.
  *  - "player2Won" — Player 2 has captured Player 1's Command.
+ *  - "draw"       — both Commanders destroyed simultaneously.
  *
  * @typedef {("playing"|"player1Won"|"player2Won"|"draw")} GameStatus
  */
@@ -121,26 +122,6 @@
  * @property {GameStatus}               status            - Game over status.
  */
 
-/**
- * Find the AA gun zone that covers a given position, if any.
- * @param   {GameState} state
- * @param   {Position}  position
- * @returns {Object|null} The zone object, or null if the position is not
- *                        inside any zone.
- */
-
-/**
- * Check whether both Commanders have been removed simultaneously,
- * resulting in a draw.
- * @param   {GameState} state
- * @returns {boolean}
- */
-
-/**
- * Check whether the game ended in a draw.
- * @param   {GameState} state
- * @returns {boolean}
- */
 /* =========================================================================
  *  MODULE CONSTANTS
  * ========================================================================= */
@@ -186,6 +167,12 @@ const TANKER_RANGE = 1;
  *  STATE CREATION
  * ========================================================================= */
 
+/**
+ * Build the fixed AA defense zone layout used in Real mode.
+ * @private
+ * @returns {Array<Object>} One zone per player, each with an owner
+ *                          and an array of defended cells.
+ */
 function createFixedZones() {
     return [
         {
@@ -209,12 +196,26 @@ function createFixedZones() {
     ];
 }
 
+/**
+ * Check whether a board position falls inside a given AA defense zone.
+ * @private
+ * @param   {Position} position - The square to test.
+ * @param   {Object}   zone     - A zone with an array of defended cells.
+ * @returns {boolean}
+ */
 function isPositionInZone(position, zone) {
     return zone.cells.some(function (cell) {
         return cell.row === position.row && cell.col === position.col;
     });
 }
 
+/**
+ * Find the AA defense zone that covers a given board position, if any.
+ * @param   {GameState} state
+ * @param   {Position}  position - The square to look up.
+ * @returns {Object|null} The zone object, or null if the position is
+ *                        not inside any zone.
+ */
 function getZoneAt(state, position) {
     if (!Array.isArray(state.aaZones)) {
         return null;
@@ -224,6 +225,13 @@ function getZoneAt(state, position) {
     }) || null;
 }
 
+/**
+ * Check whether a row/column pair is within the 8x8 board bounds.
+ * @private
+ * @param   {number} row
+ * @param   {number} col
+ * @returns {boolean}
+ */
 function isOnBoard(row, col) {
     return row >= 0 && row <= 7 && col >= 0 && col <= 7;
 }
@@ -239,21 +247,23 @@ function otherPlayer(player) {
 
 /** @private */
 function setPiece(board, position, piece) {
-    return board.map(function (row, r) {
-        if (r !== position.row) {
-            return row;
-        }
-        return row.map(function (cell, c) {
-            return (
-                c === position.col
-                ? piece
-                : cell
-            );
-        });
-    });
+    const newRow = board[position.row].slice();
+    newRow[position.col] = piece;
+    const newBoard = board.slice();
+    newBoard[position.row] = newRow;
+    return newBoard;
 }
 
 
+/**
+ * Determine whether a piece moving to a square would be destroyed
+ * by an enemy AA defense zone. Fighters are immune.
+ * @private
+ * @param   {GameState} state
+ * @param   {Position}  to    - Destination square.
+ * @param   {Piece}     mover - The piece that is moving.
+ * @returns {boolean}
+ */
 function isAAZoneHit(state, to, mover) {
     if (mover.type === "fighter" || state.aaZones.length === 0) {
         return false;
@@ -263,6 +273,16 @@ function isAAZoneHit(state, to, mover) {
     return zone !== null && zone.owner !== mover.owner;
 }
 
+/**
+ * Remove a piece that entered an enemy AA zone on a non-capture move.
+ * Records the destruction as a capture by the zone owner.
+ * @private
+ * @param   {GameState} state
+ * @param   {Position}  from  - Square the piece moved from.
+ * @param   {Position}  to    - Square where the piece is destroyed.
+ * @param   {Piece}     mover - The piece being destroyed.
+ * @returns {GameState}
+ */
 function destroyPieceByAAZone(state, from, to, mover) {
     const zone = getZoneAt(state, to);
     const zoneOwner = (
@@ -299,24 +319,35 @@ function destroyPieceByAAZone(state, from, to, mover) {
     return result;
 }
 
+/**
+ * Check whether both players' Commanders have been removed from
+ * the board, indicating a simultaneous destruction draw.
+ * @private
+ * @param   {GameState} state
+ * @returns {boolean}
+ */
 function checkDraw(state) {
-    let p1HasCommand = false;
-    let p2HasCommand = false;
-    state.board.forEach(function (row) {
-        row.forEach(function (cell) {
-            if (cell !== null && cell.type === "command") {
-                if (cell.owner === 1) {
-                    p1HasCommand = true;
-                }
-                if (cell.owner === 2) {
-                    p2HasCommand = true;
-                }
-            }
+    function hasCommand(player) {
+        return state.board.some(function (row) {
+            return row.some(function (cell) {
+                return cell !== null
+                && cell.type === "command"
+                && cell.owner === player;
+            });
         });
-    });
-    return !p1HasCommand && !p2HasCommand;
+    }
+    return !hasCommand(1) && !hasCommand(2);
 }
 
+/**
+ * Destroy a piece that landed in an enemy AA zone after a capture.
+ * Detects draw if both Commanders are now gone.
+ * @private
+ * @param   {GameState} state    - State after the capture was applied.
+ * @param   {Position}  position - Square where the attacker sits.
+ * @param   {Piece}     mover    - The attacking piece being destroyed.
+ * @returns {GameState}
+ */
 function applyPostCaptureAAHit(state, position, mover) {
     const zone = getZoneAt(state, position);
     const zoneOwner = (
@@ -355,6 +386,8 @@ function applyPostCaptureAAHit(state, position, mover) {
  * Create a new game with all aircraft in their starting positions
  * and Player 1 to move first.
  *
+ * @param   {("classic"|"real")} mode - Game mode; "real" activates
+ *                                      AA defense zones.
  * @returns {GameState} A fresh game state ready to play.
  */
 function createInitialGame(mode) {
@@ -398,7 +431,6 @@ function createInitialGame(mode) {
  *  INTERNAL HELPERS
  * ========================================================================= */
 
-/** @private */
 /** @private */
 function nextCooldownAfterMove(state, mover, to) {
     const result = Object.assign({}, state.lastMovedBombers);
@@ -470,27 +502,23 @@ function slideInDirection(state, from, mover, dr, dc) {
 
 /** @private */
 function findTanker(state, player) {
-    const matches = state.board.flatMap(function (row, r) {
-        return row.map(function (piece, c) {
-            const isTarget = (
+    let r = 0;
+    while (r < 8) {
+        let c = 0;
+        while (c < 8) {
+            const piece = state.board[r][c];
+            if (
                 piece !== null
                 && piece.type === "tanker"
                 && piece.owner === player
-            );
-            return (
-                isTarget
-                ? {row: r, col: c}
-                : null
-            );
-        });
-    }).filter(function (cell) {
-        return cell !== null;
-    });
-    return (
-        matches.length === 0
-        ? null
-        : matches[0]
-    );
+            ) {
+                return {row: r, col: c};
+            }
+            c += 1;
+        }
+        r += 1;
+    }
+    return null;
 }
 
 /* =========================================================================
@@ -827,6 +855,11 @@ function isGameOver(state) {
     return state.status !== "playing";
 }
 
+/**
+ * Check whether the game ended in a draw (both Commanders destroyed).
+ * @param   {GameState} state
+ * @returns {boolean}
+ */
 function isDraw(state) {
     return state.status === "draw";
 }
@@ -1102,7 +1135,6 @@ const Game = {
     getMoveHistory: getMoveHistory,
     isGameOver: isGameOver,
     isDraw: isDraw,
-    checkDraw: checkDraw,
     getWinner: getWinner,
     makeMove: makeMove,
     deployPlane: deployPlane,

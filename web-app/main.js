@@ -206,13 +206,100 @@ function showNameEntryModal() {
     document.getElementById("name-p1").focus();
 }
 
+function getModeCards() {
+    return Array.from(
+        document.querySelectorAll("#mode-cards [role=\"radio\"]")
+    );
+}
+
 function updateModeSelectionButtons() {
-    document.querySelectorAll(".mode-option").forEach(function (button) {
-        const mode = button.getAttribute("data-mode");
+    getModeCards().forEach(function (card) {
+        const mode = card.getAttribute("data-mode");
         const active = mode === selectedMode;
-        button.classList.toggle("mode-selected", active);
-        button.setAttribute("aria-pressed", String(active));
+        card.classList.toggle("mode-selected", active);
+        card.setAttribute("aria-checked", String(active));
+        card.setAttribute("tabindex", (
+            active
+            ? "0"
+            : "-1"
+        ));
     });
+}
+
+function focusModeCard(card) {
+    const cards = getModeCards();
+    cards.forEach(function (c) {
+        const isCurrent = c === card;
+        c.classList.toggle("mode-selected", isCurrent);
+        c.setAttribute("aria-checked", String(isCurrent));
+        c.setAttribute("tabindex", (
+            isCurrent
+            ? "0"
+            : "-1"
+        ));
+    });
+    selectedMode = card.getAttribute("data-mode");
+    card.focus();
+}
+
+function handleModeCardKeydown(event) {
+    const cards = getModeCards();
+    const current = document.activeElement;
+    const index = cards.indexOf(current);
+    if (index < 0) {
+        return;
+    }
+    const key = event.key;
+    const isNext = (
+        key === "ArrowDown"
+        || key === "ArrowRight"
+        || key === "s"
+        || key === "S"
+    );
+    const isPrev = (
+        key === "ArrowUp"
+        || key === "ArrowLeft"
+        || key === "w"
+        || key === "W"
+    );
+    if (isNext) {
+        event.preventDefault();
+        focusModeCard(cards[(index + 1) % cards.length]);
+        return;
+    }
+    if (isPrev) {
+        event.preventDefault();
+        focusModeCard(cards[(index + cards.length - 1) % cards.length]);
+        return;
+    }
+    if (key === "Enter" || key === " ") {
+        event.preventDefault();
+        document.getElementById("confirm-mode").click();
+    }
+}
+
+function trapFocusInModeModal(event) {
+    if (event.key !== "Tab") {
+        return;
+    }
+    const modal = document.getElementById("mode-selection-modal");
+    const focusable = Array.from(
+        modal.querySelectorAll(
+            "[role=\"radio\"][tabindex=\"0\"], button"
+        )
+    );
+    if (focusable.length === 0) {
+        return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 function showModeSelectionModal() {
@@ -221,6 +308,12 @@ function showModeSelectionModal() {
     if (modal) {
         updateModeSelectionButtons();
         modal.removeAttribute("hidden");
+        const selected = modal.querySelector(
+            "[role=\"radio\"][aria-checked=\"true\"]"
+        );
+        if (selected) {
+            selected.focus();
+        }
     }
 }
 
@@ -486,7 +579,7 @@ function renderBoard(state) {
         const piece = Game.getPieceAt(state, here);
         const isLight = (row + col) % 2 === 0;
 
-        cell.innerHTML = "";
+        cell.replaceChildren();
         cell.className = "cell " + (
             isLight
             ? "cell-light"
@@ -551,8 +644,12 @@ function renderStatus(state) {
     const msg = document.getElementById("status-message");
 
     if (Game.isGameOver(state)) {
-        msg.textContent =
-        "Game over: " + playerNames[Game.getWinner(state)] + " wins!";
+        if (Game.isDraw(state)) {
+            msg.textContent = "Game over: DRAW — MUTUAL DESTRUCTION";
+        } else {
+            msg.textContent =
+            "Game over: " + playerNames[Game.getWinner(state)] + " wins!";
+        }
         return;
     }
     if (Game.canDeploy(state)) {
@@ -595,7 +692,7 @@ function renderRanking() {
     if (board === null) {
         return;
     }
-    board.innerHTML = "";
+    board.replaceChildren();
 
     // Sort descending by score; ties keep P1 above P2
     const entries = [
@@ -652,7 +749,7 @@ function renderSkipButton(state) {
 function renderCapturedPieces(state) {
     [1, 2].forEach(function (player) {
         const list = document.getElementById("captured-p" + player);
-        list.innerHTML = "";
+        list.replaceChildren();
 
         const killedCounts = {};
         Game.getCapturedPieces(state, player).forEach(function (piece) {
@@ -686,7 +783,7 @@ function renderGameOver(state) {
     if (Game.isGameOver(state)) {
         if (Game.isDraw(state)) {
             setText("winner-message", "DRAW — MUTUAL DESTRUCTION");
-            subtitle.textContent = "Both Command aircraft destroyed simultaneously";
+            subtitle.textContent = "Both Command aircraft destroyed";
             overlay.classList.remove("player2-wins");
             overlay.classList.add("game-draw");
         } else {
@@ -1153,12 +1250,21 @@ function init() {
     bindClick("rookie-toggle", toggleRookieMode);
     updateRookieToggle();
     bindClick("confirm-names", handleNameEntry);
-    bindClick("mode-classic", function () {
-        chooseGameMode("classic");
+
+    const modeCards = document.getElementById("mode-cards");
+    modeCards.addEventListener("keydown", handleModeCardKeydown);
+    getModeCards().forEach(function (card) {
+        card.addEventListener("click", function () {
+            focusModeCard(card);
+        });
     });
-    bindClick("mode-real", function () {
-        chooseGameMode("real");
+    bindClick("confirm-mode", function () {
+        chooseGameMode(selectedMode);
     });
+    document.getElementById("mode-selection-modal").addEventListener(
+        "keydown",
+        trapFocusInModeModal
+    );
 
     const inp1 = document.getElementById("name-p1");
     inp1.addEventListener("keydown", function (e) {

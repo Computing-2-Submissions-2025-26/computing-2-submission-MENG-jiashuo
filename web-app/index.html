@@ -12,10 +12,11 @@
 </head>
 
 <body>
+    <a href="#board" class="skip-nav">Skip to game board</a>
     <header class="topbar">
         <div class="brand">
             <img src="./resource/logo.png" alt="ACC logo" class="logo">
-            <h1 style="color: black;">U.S. Air Combat Command - Ramstein Flag</h1>
+            <h1>U.S. Air Combat Command - Ramstein Flag</h1>
         </div>
 
         <div class="topbar-actions">
@@ -107,7 +108,7 @@
 
     </main>
 
-    <div id="game-over-overlay" hidden role="alertdialog" aria-labelledby="winner-message" aria-modal="true">
+    <div id="game-over-overlay" hidden role="alertdialog" aria-labelledby="winner-message" aria-describedby="game-over-subtitle" aria-modal="true">
         <div class="overlay-content">
             <h2 id="winner-message"></h2>
             <p id="game-over-subtitle" class="game-over-subtitle"></p>
@@ -115,10 +116,10 @@
         </div>
     </div>
 
-    <div id="name-entry-modal" role="dialog" aria-labelledby="name-entry-title" aria-modal="true">
+    <div id="name-entry-modal" role="dialog" aria-labelledby="name-entry-title" aria-describedby="name-entry-desc" aria-modal="true">
         <div class="name-entry-content">
             <h2 id="name-entry-title">Commander Identification</h2>
-            <p class="name-entry-subtitle">Enter callsigns before the mission begins</p>
+            <p id="name-entry-desc" class="name-entry-subtitle">Enter callsigns before the mission begins</p>
             <div class="name-entry-fields">
                 <label for="name-p1">Player 1 Callsign</label>
                 <input type="text" id="name-p1" placeholder="Player 1" maxlength="20" autocomplete="off">
@@ -129,30 +130,31 @@
         </div>
     </div>
 
-    <div id="mode-selection-modal" hidden role="dialog" aria-labelledby="mode-selection-title" aria-modal="true">
+    <div id="mode-selection-modal" hidden role="dialog" aria-labelledby="mode-selection-title" aria-describedby="mode-selection-desc" aria-modal="true">
         <div class="name-entry-content mode-selection-content">
             <h2 id="mode-selection-title">Mission Mode</h2>
-            <p class="name-entry-subtitle">Choose how the battle will be fought</p>
-            <div class="mode-options">
-                <button type="button" class="mode-option mode-card-classic" id="mode-classic" data-mode="classic" aria-pressed="true">
+            <p id="mode-selection-desc" class="name-entry-subtitle">Choose how the battle will be fought</p>
+            <div class="mode-options" role="radiogroup" aria-labelledby="mode-selection-title" id="mode-cards">
+                <div role="radio" aria-checked="true" tabindex="0" class="mode-option mode-card-classic mode-selected" id="mode-classic" data-mode="classic">
                     <span class="mode-card-badge">STANDARD</span>
                     <span class="mode-title">Classic</span>
                     <span class="mode-description">Standard air combat rules. Capture the enemy Command aircraft to win.</span>
-                </button>
-                <button type="button" class="mode-option mode-card-real" id="mode-real" data-mode="real" aria-pressed="false">
+                </div>
+                <div role="radio" aria-checked="false" tabindex="-1" class="mode-option mode-card-real" id="mode-real" data-mode="real">
                     <span class="mode-card-badge">ADVANCED</span>
                     <span class="mode-title">Real Battle</span>
                     <span class="mode-description">Restricted airspace is active. Enemy air defense zones will automatically destroy any aircraft that enters. (excluded fighters). Capture the enemy Command to win.</span>
-                </button>
+                </div>
             </div>
+            <button type="button" id="confirm-mode" class="confirm-mode-btn">Confirm</button>
         </div>
     </div>
 
-    <div id="rules-modal" hidden role="dialog" aria-labelledby="rules-title" aria-modal="true">
+    <div id="rules-modal" hidden role="dialog" aria-labelledby="rules-title" aria-describedby="rules-desc" aria-modal="true">
         <div class="rules-content">
             <h2 id="rules-title">Mission Brief</h2>
 
-            <p class="welcome-message">
+            <p id="rules-desc" class="welcome-message">
                 Commanders, welcome to <strong>Ramstein Flag 2026!</strong>.
                 Your mission objectives are detailed below.
             </p>
