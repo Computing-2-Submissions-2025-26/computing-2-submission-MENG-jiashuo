@@ -68,15 +68,6 @@ game_test.js          # Unit tests (Mocha + Chai)
 
 ---
 
-## Running Tests
-
-```bash
-npm install
-npm test
-```
-
----
-
 ## Image References
 
 All photographs used in this project were taken by Jiashuo Meng, except where noted below.
